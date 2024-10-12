@@ -10,6 +10,10 @@
     "superjson": "^2.2.1",
     "vite-tsconfig-paths": "^5.0.1"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alexanderchan/memocache"
+  },
   "scripts": {
     "build": "tsup",
     "check-exports": "yarn pack --out ./ignore-package.tgz && yarn attw ./ignore-package.tgz && rm ./ignore-package.tgz",
