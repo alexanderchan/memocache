@@ -29,7 +29,7 @@ async function main() {
 
   const cachedHello = createCachedFunction(hello)
 
-  cachedHello.delete({ message: 'world' })
+  await cachedHello.invalidate({ message: 'world' })
 
   console.log(await cachedHello({ message: 'world' }))
   console.log(await cachedHello({ message: 'world' }))
