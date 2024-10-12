@@ -1,0 +1,69 @@
+# See https://help.github.com/ignore-files/ for more about ignoring files.
+
+# dependencies
+node_modules/
+.vscode/chrome/
+.vscode/**
+.vscode
+
+# testing
+/coverage
+
+# production
+build/
+dist/
+
+# misc
+.env
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# If we use scss don't need css
+#src/**/*.css
+dist/**
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+.cache/**
+# public/assets
+vendor/bundle/
+.env
+.circlci/.env
+.vscode
+# public/assets
+# assets
+# public/assets
+# public/assets/**
+
+# If you're not using Zero-Installs:
+.yarn/*
+!.yarn/patches
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+.pnp.*
+.yarn/install-state.gz
+
+# yarn zero installs
+# .yarn/*
+# !.yarn/cache
+# !.yarn/patches
+# !.yarn/plugins
+# !.yarn/releases
+# !.yarn/sdks
+# !.yarn/versions
+tsconfig.tsbuildinfo
+.sentryclirc
+ignore-*
+.next
+.configcache
+apps/online-ordering/.vscode/settings.json
+cert
+certs
+venv
