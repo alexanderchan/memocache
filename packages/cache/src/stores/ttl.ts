@@ -7,7 +7,7 @@ export function createTTLStore({
 }: {
   ttlCache?: TTLCache<any, any>
   defaultTTL?: number
-}): CacheStore {
+}): CacheStore & { entries: () => Promise<[string, any][]> } {
   const ttlCache =
     ttlCacheProp ||
     new TTLCache({

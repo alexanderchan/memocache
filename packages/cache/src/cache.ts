@@ -16,8 +16,6 @@ export interface CacheStore extends AsyncDisposable {
   clear?(): Promise<any>
   /** dispose of any resources or connections when the cache is no longer in use */
   dispose?(): Promise<any>
-  /** For debugging return the entries in the cache */
-  entries?(): Promise<any[]>
 }
 
 export function hashString(str: string) {
