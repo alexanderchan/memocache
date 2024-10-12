@@ -1,10 +1,9 @@
 import { defaultLogger, Logger } from '@/logger'
-import { wrap } from './error'
-
 import { CacheError } from './error/cache-error'
 import { hashKey, QueryKey } from './hash-key'
 import { Time } from './time'
 import { Context, DefaultStatefulContext } from '@/context'
+import { hashString } from '@/hash-string'
 
 export interface CacheStore extends AsyncDisposable {
   /** a name for metrics */
@@ -18,27 +17,6 @@ export interface CacheStore extends AsyncDisposable {
   clear?(): Promise<any>
   /** dispose of any resources or connections when the cache is no longer in use */
   dispose?(): Promise<any>
-}
-
-export async function hashString(str: string): Promise<string> {
-  // in order to support edge functions we need to use the web crypto api instead of the simpler synchronous
-  // import { createHash } from 'node:crypto'
-  // createHash('SHA256').update(str).digest('hex')
-  // https://github.com/vercel/examples/blob/main/edge-middleware/crypto/pages/api/crypto.ts
-  const encoder = new TextEncoder()
-  const digest = await crypto.subtle.digest('SHA-256', encoder.encode(str))
-  const hashArray = Array.from(new Uint8Array(digest)) // convert buffer to byte array
-  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('') // convert bytes to hex string
-
-  return hashHex
-}
-
-// we need a stable key for the function
-function generateFunctionKey(fn: Function & { hashKey?: string }) {
-  const functionStr = fn.toString()
-
-  // SHA256 should be node crypto hardware optimized, MD5 is another option
-  return hashString(functionStr)
 }
 
 type CacheQueryOptions = { ttl?: number; fresh?: number; cachePrefix?: string }
@@ -194,7 +172,7 @@ export const createCache = ({
 
     async function getCachePrefix() {
       if (!cachedFunctionSettings.cachePrefix) {
-        cachedFunctionSettings.cachePrefix = await generateFunctionKey(fn)
+        cachedFunctionSettings.cachePrefix = await hashString(fn?.toString())
       }
       return cachedFunctionSettings.cachePrefix
     }
