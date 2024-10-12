@@ -68,3 +68,4 @@ cert
 certs
 venv
 .turbo
+.turbo/daemon
