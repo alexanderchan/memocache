@@ -30,7 +30,7 @@ One may also want to write back to multiple stores such as an in memory TTL Cach
 ## Installation
 
 ```bash
-npm install @alexmchan/cache
+npm install @alexmchan/memocache
 ```
 
 ## Usage
@@ -38,9 +38,9 @@ npm install @alexmchan/cache
 ### Basic Usage with TTL Store
 
 ```typescript
-import { createCache } from '@alexmchan/cache'
-import { createTTLStore } from '@alexmchan/cache/stores'
-import { Time } from '@alexmchan/cache/time'
+import { createCache } from '@alexmchan/memocache'
+import { createTTLStore } from '@alexmchan/memocache/stores'
+import { Time } from '@alexmchan/memocache/time'
 
 const store = createTTLStore({
   defaultTTL: 5 * Time.Minute,
@@ -66,9 +66,9 @@ console.log(await cachedFunction('example'))
 ### Using SQLite Store
 
 ```typescript
-import { createCache } from '@alexmchan/cache'
-import { createSqliteStore } from '@alexmchan/cache/stores/sqlite'
-import { Time } from '@alexmchan/cache/time'
+import { createCache } from '@alexmchan/memocache'
+import { createSqliteStore } from '@alexmchan/memocache/stores/sqlite'
+import { Time } from '@alexmchan/memocache/time'
 import { createClient } from '@libsql/client'
 
 const sqliteClient = createClient({
