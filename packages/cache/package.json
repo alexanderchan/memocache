@@ -1,5 +1,5 @@
 {
-  "name": "@alexmchan/cache",
+  "name": "@alexmchan/memocache",
   "dependencies": {
     "@isaacs/ttlcache": "^1.4.1",
     "@libsql/client": "^0.14.0",
