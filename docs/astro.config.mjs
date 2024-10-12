@@ -5,6 +5,8 @@ import tailwind from '@astrojs/tailwind'
 
 // https://astro.build/config
 export default defineConfig({
+  site: 'https://alexanderchan.github.io',
+  base: 'memocache',
   integrations: [
     starlight({
       title: 'Memocache Docs',
