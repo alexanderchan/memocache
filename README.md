@@ -3,7 +3,7 @@ title: Usage
 description: Learn how to use the Memocache package to cache data in your Node.js applications.
 ---
 
-# Flexible Cache Implementation
+# memocache
 
 This package provides a flexible and extensible caching solution for Node.js applications. It supports multiple storage backends and offers features like TTL (Time-To-Live), automatic background revalidation, and function memoization.
 
@@ -40,14 +40,17 @@ const cache = createCache({
 
 const { createCachedFunction } = cache
 
-// Create a cached version of a function
-const cachedFunction = createCachedFunction(async (arg) => {
-  // Expensive operation
+// your fetch function
+function fetchSomething(arg) {
   return `Result for ${arg}`
-})
+}
+
+// Create a cached version of a function
+const cachedFetchSomething = createCachedFunction(fetchSomething)
 
 // Use the cached function
-console.log(await cachedFunction('example'))
+console.log(await cachedFetchSomething('example')) // fetchSomething is called once
+console.log(await cachedFetchSomething('example')) // fetchSomething is not called cached value is returned
 ```
 
 ## How it works
@@ -58,11 +61,11 @@ console.log(await cachedFunction('example'))
 
 3. If the data is past it's time to live it will be expired from the store
 
-![An illustration of planets and stars featuring the word “astro”](https://raw.githubusercontent.com/alexanderchan/memocache/refs/heads/main/docs/src/assets/overview-diagram-1.svg)
+![A diagram of how the caching works](https://raw.githubusercontent.com/alexanderchan/memocache/refs/heads/main/docs/src/assets/overview-diagram-1.svg)
 
 <!--
 this diagram is in docs/src/assets/overview-diagram.svg
-and can be generated from the script in docs
+and can be generated from the script in docs `generate:diagrams`
  -->
 
 ## Motivation
@@ -84,6 +87,66 @@ One may also want to write back to multiple stores such as an in memory TTL Cach
 We use the stable stringified hash popularized by react-query to generate the cache key and a sha256 hash of any function code. This allows for easy generation of the cache key based on the function signature and arguments allowing us to easily memoize functions.
 
 This also supports the stale while revalidate pattern allowing to return stale data while fetching fresh data in the background.
+
+## Motivation
+
+It can be a lot of setup to use a cache. This package provides a simple to use cache that supports stale while revalidation. The typical pattern for caching requires:
+
+- finding a good key to use for the cache
+- checking if the key exists in the cache
+- if the key does not exist, fetching the data and storing it in the cache
+- if the key does exist, returning the data from the cache
+- optionally:
+  - setting a TTL on the cached value
+  - setting a stale while revalidation policy
+  - setting a cache store
+  - setting up encrypted caches
+
+One may also want to write back to multiple stores such as an in memory TTL Cache, a local sqlite instance, or Redis. This package provides a simple to use API that supports all of these features.
+
+We use the stable stringified hash popularized by react-query to generate the cache key. This allows for easy generation of the cache key based on the function signature and arguments allowing us to easily memoize functions.
+
+This also supports the stale while revalidate pattern allowing to return stale data while fetching fresh data in the background.
+
+```ts
+// with memocache
+const { createCachedFunction } = createCache({
+  stores: [createTTLStore()],
+})
+
+// Create a cached version of a function
+const cachedFunction = createCachedFunction(async ({ id, name }) => {
+  // some expensive operation or fetch
+  return `Result for ${arg}`
+})
+
+// without, for each function
+
+function doExpensiveOperation({ id, name }) {
+  // check the cache
+  const key = JSON.stringify({ id, name })
+  const cachedValue = cache.get(key)
+  if (cachedValue) {
+    return cachedValue
+  }
+
+  // some expensive operation or fetch
+  const result = `Result for ${id} and ${name}`
+
+  // we have to wait here or we need to find a way to signal to the platform for serverless that the
+  try {
+    await cache.set(key, result, timeToLive)
+  } catch (e) {
+    //...
+  }
+  // now repeat for all available cache's and we still need
+  // to add stale while revalidate
+  // and serverless support
+  return result
+}
+```
+
+With this method it's easy to wrap a function and have it read/write from multiple stores.
 
 ## API Reference
 
@@ -107,7 +170,7 @@ Creates a memoized version of a function.
 
 - `fn`: The function to memoize
 - `options`(optional): Options for the memoized function
-- `options.cachePrefix`): A prefix will be auto generated based on the function contents for convenience and will add only fractions of a millisecond, however for very very large functions this might be a concern so one can specify a prefix such as `/api/todos` to scope the function to a known value. Note that any change to the function code will also change the cache key unless this value is set.
+- `options.cachePrefix`: A prefix will be auto generated based on the function contents for convenience and will add only fractions of a millisecond, however for very very large functions this might be a concern so one can specify a prefix such as `/api/todos` to scope the function to a known value. Note that any change to the function code will also change the cache key unless this value is set.
 - `options.ttl`: Time-To-Live for cache entries in ms
 - `options.fresh`: Revalidate stale data after this time in ms
 
