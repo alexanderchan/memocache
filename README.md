@@ -71,6 +71,15 @@ const cachedFunction = createCachedFunction(async (arg) => {
 console.log(await cachedFunction('example'))
 ```
 
+## How it works
+
+![An illustration of planets and stars featuring the word “astro”](https://raw.githubusercontent.com/alexanderchan/docs/src/assets/overview-diagram.svg)
+
+<!--
+this diagram is in docs/src/assets/overview-diagram.svg
+and can be generated from the script in docs
+ -->
+
 ## API Reference
 
 ### `createCache(options: CacheOptions)`

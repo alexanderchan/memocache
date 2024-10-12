@@ -71,6 +71,10 @@ const cachedFunction = createCachedFunction(async (arg) => {
 console.log(await cachedFunction('example'))
 ```
 
+## How it works
+
+![An illustration of planets and stars featuring the word “astro”](https://raw.githubusercontent.com/alexanderchan/docs/src/assets/overview-diagram.svg)
+
 ## API Reference
 
 ### `createCache(options: CacheOptions)`
@@ -193,17 +197,15 @@ The store interface is the following
 
 ```typescript
 export interface CacheStore extends AsyncDisposable {
-  set(key: string, value: any, ttl?: number): Promise<void>
+  /** Set a value in the store, ttl in milliseconds */
+  set(key: string, value: any, ttl?: number): Promise<any>
   get(key: string): Promise<any>
-  delete(key: string): Promise<void>
+  delete(key: string): Promise<unknown>
 
-  // optional methods
   /** Remove all values from the store */
-  clear?(): Promise<void>
+  clear?(): Promise<any>
   /** dispose of any resources or connections when the cache is no longer in use */
-  dispose?(): Promise<void>
-  /** For debugging return the entries in the cache */
-  entries?(): Promise<any[]>
+  dispose?(): Promise<any>
 }
 ```
 

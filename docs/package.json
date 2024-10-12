@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
+    "generate:diagrams": "docker run --rm -u `id -u`:`id -g` -v ./src/assets:/data minlag/mermaid-cli -i overview-diagram.md -o overview-diagram.svg",
     "copyreadme": "cp ../README.md src/content/docs/guides/usage.md",
     "build": "npm run copyreadme && astro check && astro build",
     "preview": "astro preview",
