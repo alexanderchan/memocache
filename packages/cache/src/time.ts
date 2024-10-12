@@ -4,4 +4,9 @@ export enum Time {
   Second = 1000,
   Minute = 60 * Time.Second,
   Hour = 60 * Time.Minute,
+  // for caching purposes it's nice to have these even if they're not exact across daylight savings or leap years
+  Day = 24 * Time.Hour,
+  Week = 7 * Time.Day,
+  Month = 30 * Time.Day,
+  Year = 365 * Time.Day,
 }

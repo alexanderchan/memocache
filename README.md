@@ -9,10 +9,11 @@ This package provides a flexible and extensible caching solution for Node.js app
 
 ## Features
 
-- Multiple storage backend support (e.g., in-memory TTL store, SQLite)
+- Multiple storage backend support (e.g., in-memory TTL store, Redis, SQLite)
 - Configurable TTL (Time-To-Live) for cache entries
 - Automatic background revalidation of stale data
 - Function memoization with automatic cache key generation `const cachedFunction = createCachedFunction(async () => "I'm cached")`
+- Supports middleware for encryption of cache stores
 
 ## Installation
 
@@ -199,8 +200,10 @@ Constants for time units in milliseconds.
 - `Time.Second`
 - `Time.Minute`
 - `Time.Hour`
+- `Time.Day`
+- `Time.Week`
 
-Usage `5 * Time.Minute` or `10 * Time.Second`, mirrors [`go's duration`](https://github.com/golang/go/blob/b521ebb55a9b26c8824b219376c7f91f7cda6ec2/src/time/time.go#L930).
+Usage `5 * Time.Minute` or `10 * Time.Second`, mirrors [`go's Time durations`](https://github.com/golang/go/blob/b521ebb55a9b26c8824b219376c7f91f7cda6ec2/src/time/time.go#L930).
 
 ### TTL Store
 
