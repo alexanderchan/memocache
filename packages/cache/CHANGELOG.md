@@ -1,5 +1,11 @@
 # @alexmchan/memocache
 
+## 0.2.0
+
+### Minor Changes
+
+- 2e49073: make hash generation lazy and support edge function caching
+
 ## 0.1.5
 
 ### Patch Changes
