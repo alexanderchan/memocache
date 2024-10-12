@@ -216,7 +216,6 @@ export const createCache = ({
       await Promise.allSettled(stores.map((store) => store.delete(key)))
     }
 
-    cachedFunction.uncached = fn
     cachedFunction.getCachePrefix = getCachePrefix
 
     return cachedFunction

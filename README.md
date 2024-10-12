@@ -464,13 +464,14 @@ const memoizedFn = createCachedFunction(({ storeId, customerId }) =>
 
 ### Bypassing the cache
 
-To bypass the cache the original function can be used or call the `.uncached()` method on the memoized function.
+To bypass the cache just call the original function directly.
 
 ```ts
-const memoizedFn = createCachedFunction(async (parameter) => {
+const exampleOriginalFn = async (parameter) => {
   return `Result for ${parameter}`
-})
-await memoizedFn.uncached({ parameter }) // Bypass the cache
+}
+const memoizedFn = createCachedFunction(exampleOriginalFn)
+exampleOriginalFn('example') // bypasses the cache
 ```
 
 ## Large cache keys

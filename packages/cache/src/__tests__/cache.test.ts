@@ -223,8 +223,5 @@ describe('cacheQuery', () => {
     expect(workFunction).toHaveBeenCalledTimes(1)
     expect(firstCallResult).toBe('test')
     expect(workFunction).toHaveBeenCalledTimes(1)
-
-    await memoizedFn.uncached()
-    expect(workFunction).toHaveBeenCalledTimes(2)
   })
 })
