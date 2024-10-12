@@ -84,6 +84,7 @@ export function createSqliteStore({
   }
 
   const store: SqliteStore = {
+    name: 'sqlite',
     async set(key: string, value: any, ttl?: number): Promise<void> {
       await lazyInit()
       const _ttl = ttl ?? defaultTTL

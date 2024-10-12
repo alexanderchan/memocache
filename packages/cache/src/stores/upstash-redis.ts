@@ -25,6 +25,7 @@ export const createUpstashRedisStore = ({
     })
 
   return {
+    name: 'upstash-redis',
     async set(key, value, ttl = defaultTTL) {
       await redisClient.set(key, value, { px: ttl })
     },

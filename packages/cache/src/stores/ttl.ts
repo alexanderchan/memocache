@@ -16,6 +16,7 @@ export function createTTLStore({
     })
 
   return {
+    name: 'ttl',
     async set(key, value, ttl = defaultTTL) {
       ttlCache.set(key, value, { ttl })
     },

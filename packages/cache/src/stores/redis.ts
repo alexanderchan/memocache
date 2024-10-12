@@ -20,6 +20,7 @@ export const createRedisStore = ({
     })
 
   return {
+    name: 'ioredis',
     async set(key, value, ttl = defaultTTL) {
       await redisClient.set(key, superjson.stringify(value), 'PX', ttl)
     },

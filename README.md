@@ -433,6 +433,8 @@ This was inspired by the apis and code [@unkey/cache](https://www.npmjs.com/pack
 
 The primary difference to `@unkey/cache` is that this package is more focused on providing an even more simple api so that each function that is called doesn't need to generate it's own store itself and to allow per function based cache invalidation and configuration of stale and expiry times.
 
+Perhaps, the `createCachedFunction` and `cacheQuery` apis could be built around a generic `@unkey/cache` and may be an update for a future implementation.
+
 ## Benchmarks
 
 Run the `src/__tests__/benchmark.ts` script to get a rough idea of the performance of the different stores on your platform.

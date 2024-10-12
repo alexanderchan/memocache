@@ -83,7 +83,7 @@ describe('cacheQuery', () => {
     // Set stale data in cache
     await store.set(hashKey(queryKey), {
       value: 'stale data',
-      age: Date.now() - 1 * Time.Year,
+      age: Date.now() - 1 * Time.Hour,
     })
 
     const result = await cache.cacheQuery({
