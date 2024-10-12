@@ -73,7 +73,7 @@ console.log(await cachedFunction('example'))
 
 ## How it works
 
-![An illustration of planets and stars featuring the word “astro”](https://raw.githubusercontent.com/alexanderchan/docs/src/assets/overview-diagram.svg)
+![An illustration of planets and stars featuring the word “astro”](https://raw.githubusercontent.com/alexanderchan/memocache/refs/heads/main/docs/src/assets/overview-diagram.svg)
 
 ## API Reference
 
