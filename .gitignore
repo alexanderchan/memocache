@@ -67,3 +67,4 @@ apps/online-ordering/.vscode/settings.json
 cert
 certs
 venv
+.turbo
