@@ -129,51 +129,53 @@ export const createCache = ({
     queryKey: string
     ttl?: number
   }) => {
-    const newData = await wrap(
-      await queryFn(),
-      (err: Error) => new CacheError({ message: err.message, key: queryKey }),
-    )
-    if (newData?.err) {
+    let newData: any
+    try {
+      newData = await queryFn()
+
+      // update all the stores with the new data
+      const storesUpdatedResultsPromise = Promise.allSettled(
+        stores.map(
+          async (store) =>
+            await store.set(queryKey, { value: newData, age: Date.now() }, ttl),
+        ),
+      )
+
+      const storesUpdatedResults = await storesUpdatedResultsPromise
+
+      _context.waitUntil(storesUpdatedResultsPromise)
+
+      // If any store failed to update, log the error
+      storesUpdatedResults.forEach((storeResult) => {
+        if (storeResult.status === 'rejected') {
+          logger.error(
+            new CacheError({
+              message: 'Failed to update cache store',
+              key: queryKey,
+            }),
+          )
+        }
+      })
+
+      // the results are useful in order to append to a waituntil
+      // we have to be careful because we don't want to have a huge array of promises around
+      // so we need to
+      // a) have a timeout for the waituntil
+      // b) have a limit of promises in the array
+      // c) have a way to clean up the array
+      // https://vercel.com/docs/functions/edge-middleware/middleware-api#waituntil
+      // https://www.unkey.com/docs/libraries/ts/cache/overview
+      return storesUpdatedResults
+    } catch (err) {
+      logger.error(
+        new CacheError({
+          message: 'Failed to revalidate cache',
+          key: queryKey,
+        }),
+      )
+      // we are in the background so we don't need to throw
       return
     }
-
-    // update all the stores with the new data
-    const storesUpdatedResultsPromise = Promise.allSettled(
-      stores.map(
-        async (store) =>
-          await store.set(
-            queryKey,
-            { value: newData?.val, age: Date.now() },
-            ttl,
-          ),
-      ),
-    )
-
-    const storesUpdatedResults = await storesUpdatedResultsPromise
-
-    _context.waitUntil(storesUpdatedResultsPromise)
-
-    // If any store failed to update, log the error
-    storesUpdatedResults.forEach((storeResult) => {
-      if (storeResult.status === 'rejected') {
-        logger.error(
-          new CacheError({
-            message: 'Failed to update cache store',
-            key: queryKey,
-          }),
-        )
-      }
-    })
-
-    // the results are useful in order to append to a waituntil
-    // we have to be careful because we don't want to have a huge array of promises around
-    // so we need to
-    // a) have a timeout for the waituntil
-    // b) have a limit of promises in the array
-    // c) have a way to clean up the array
-    // https://vercel.com/docs/functions/edge-middleware/middleware-api#waituntil
-    // https://www.unkey.com/docs/libraries/ts/cache/overview
-    return storesUpdatedResults
   }
 
   function dispose() {
