@@ -18,6 +18,9 @@
     "test:watch": {
       "cache": false,
       "persistent": true
+    },
+    "ci": {
+      "dependsOn": ["^ci", "typecheck", "test"]
     }
   }
 }
