@@ -13,6 +13,9 @@ export default defineConfig({
       social: {
         github: 'https://github.com/alexanderchan/memocache',
       },
+      editLink: {
+        baseUrl: 'https://github.com/alexanderchan/memocache/edit/main/docs',
+      },
       sidebar: [
         {
           label: 'Docs',

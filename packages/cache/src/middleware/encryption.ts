@@ -1,6 +1,6 @@
-import { CacheStore } from '@/cache'
-import superjson from 'superjson'
-import memoizeLast from 'just-memoize-last'
+import { CacheStore } from "@/cache"
+import superjson from "superjson"
+import memoizeLast from "just-memoize-last"
 
 // we memozie only the last one because this will be
 // only needed for the use case of store1.set => store2.set
@@ -33,7 +33,7 @@ export function createEncryptedStore({
   let keyHashBase64: string
 
   if (key.length < 8) {
-    throw new Error('Key must be at least 8 characters long')
+    throw new Error("Key must be at least 8 characters long")
   }
 
   // Function to build the cache key
@@ -45,32 +45,32 @@ export function createEncryptedStore({
     const encoder = new TextEncoder()
     // Derive a 256-bit key from the provided key
     const keyMaterial = await crypto.subtle.importKey(
-      'raw',
+      "raw",
       encoder.encode(key),
-      { name: 'PBKDF2' },
+      { name: "PBKDF2" },
       false,
-      ['deriveBits', 'deriveKey'],
+      ["deriveBits", "deriveKey"],
     )
 
     const encodedSalt = encoder.encode(salt) // You might want to store this salt securely
 
     const derivedKey = await crypto.subtle.deriveKey(
       {
-        name: 'PBKDF2',
+        name: "PBKDF2",
         salt: encodedSalt,
         iterations: 100_000,
-        hash: 'SHA-256',
+        hash: "SHA-256",
       },
       keyMaterial,
-      { name: 'AES-GCM', length: 256 },
+      { name: "AES-GCM", length: 256 },
       false,
-      ['encrypt', 'decrypt'],
+      ["encrypt", "decrypt"],
     )
 
     cryptoKey = derivedKey
 
     // Generate a hash of the key
-    keyHash = await crypto.subtle.digest('SHA-256', encoder.encode(key))
+    keyHash = await crypto.subtle.digest("SHA-256", encoder.encode(key))
 
     keyHashBase64 = btoa(String.fromCharCode(...new Uint8Array(keyHash)))
 
@@ -122,7 +122,7 @@ async function encrypt(
   const iv = crypto.getRandomValues(new Uint8Array(12))
   const encodedData = encoder.encode(superjson.stringify(data))
   const ciphertext = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv },
+    { name: "AES-GCM", iv },
     cryptoKey,
     encodedData,
   )
@@ -143,7 +143,7 @@ async function decrypt(
     c.charCodeAt(0),
   )
   const decryptedBuffer = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv: decodedIv },
+    { name: "AES-GCM", iv: decodedIv },
     cryptoKey,
     decodedCiphertext,
   )

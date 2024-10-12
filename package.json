@@ -7,6 +7,7 @@
     "ci": "turbo run ci",
     "build": "turbo build",
     "test": "turbo run test",
+    "docs": "pnpm run --filter '*docs' dev",
     "format:root": "prettier \"**/*.{ts,tsx,md,js,json}\" --check --cache",
     "format:fix": "prettier --write \"**/*.{ts,tsx,md,json}\"",
     "typecheck": "turbo run typecheck",

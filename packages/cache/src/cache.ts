@@ -1,10 +1,9 @@
-import { wrap } from './error'
+import { wrap } from "./error"
 
-import { CacheError } from './error/cache-error'
-import { hashKey, QueryKey } from './hash-key'
-import { createHash } from 'node:crypto'
-import { Time } from './time'
-import { Context, DefaultStatefulContext } from '@/context'
+import { CacheError } from "./error/cache-error"
+import { hashKey, QueryKey } from "./hash-key"
+import { Time } from "./time"
+import { Context, DefaultStatefulContext } from "@/context"
 
 export interface CacheStore extends AsyncDisposable {
   /** a name for metrics */
@@ -20,21 +19,28 @@ export interface CacheStore extends AsyncDisposable {
   dispose?(): Promise<any>
 }
 
-export function hashString(str: string) {
-  // we would need a lazy hash function to set this
+export async function hashString(str: string): Promise<string> {
+  // in order to support edge functions we need to use the web crypto api instead of the simpler synchronous
+  // import { createHash } from 'node:crypto'
+  // createHash('SHA256').update(str).digest('hex')
   // https://github.com/vercel/examples/blob/main/edge-middleware/crypto/pages/api/crypto.ts
-  return createHash('SHA256').update(str).digest('hex')
+  const encoder = new TextEncoder()
+  const digest = await crypto.subtle.digest("SHA-256", encoder.encode(str))
+  const hashArray = Array.from(new Uint8Array(digest)) // convert buffer to byte array
+  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("") // convert bytes to hex string
+
+  return hashHex
 }
 
 // we need a stable key for the function
-function generateFunctionKey(fn: Function & { hashKey?: string }): string {
+function generateFunctionKey(fn: Function & { hashKey?: string }) {
   const functionStr = fn.toString()
 
   // SHA256 should be node crypto hardware optimized, MD5 is another option
   return hashString(functionStr)
 }
 
-type CacheQueryOptions = { ttl?: number; fresh?: number }
+type CacheQueryOptions = { ttl?: number; fresh?: number; cachePrefix?: string }
 interface CacheOptions {
   stores: CacheStore[]
   context?: Context
@@ -144,10 +150,10 @@ export const createCache = ({
 
     // If any store failed to update, log the error
     storesUpdatedResults.forEach((storeResult) => {
-      if (storeResult.status === 'rejected') {
+      if (storeResult.status === "rejected") {
         console.error(
           new CacheError({
-            message: 'Failed to update cache store',
+            message: "Failed to update cache store",
             key: queryKey,
           }),
         )
@@ -175,22 +181,41 @@ export const createCache = ({
     fn: T,
     options?: CacheQueryOptions,
   ) {
-    const key = generateFunctionKey(fn)
+    const cachedFunctionSettings = {
+      cachePrefix: options?.cachePrefix ?? "",
+    }
 
-    function cachedFunction(...args: Parameters<T>): Promise<ReturnType<T>> {
+    async function getCachePrefix() {
+      if (!cachedFunctionSettings.cachePrefix) {
+        cachedFunctionSettings.cachePrefix = await generateFunctionKey(fn)
+      }
+      return cachedFunctionSettings.cachePrefix
+    }
+
+    async function cachedFunction(
+      ...args: Parameters<T>
+    ): Promise<ReturnType<T>> {
+      // we delay the generation of the cache key until the first call
+      // so that we can call createCachedFunction syncrhonously
+
+      const cachePrefix = await getCachePrefix()
+
       return cacheQuery({
         queryFn: () => fn.apply(undefined, args),
-        queryKey: [key, args],
+        queryKey: [cachePrefix, args],
         options,
       })
     }
 
-    cachedFunction.cacheKey = key
-    cachedFunction.uncached = fn
-    cachedFunction.delete = async (...args: Parameters<T>) => {
-      const key = hashKey([generateFunctionKey(fn), args])
+    cachedFunction.invalidate = async (...args: Parameters<T>) => {
+      const cachePrefix = await getCachePrefix()
+      const key = hashKey([cachePrefix, args])
+
       await Promise.allSettled(stores.map((store) => store.delete(key)))
     }
+
+    cachedFunction.uncached = fn
+    cachedFunction.getCachePrefix = getCachePrefix
 
     return cachedFunction
   }

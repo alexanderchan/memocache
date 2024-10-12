@@ -47,9 +47,9 @@ pnpm install @alexmchan/memocache
 ### Basic Usage with TTL Store
 
 ```typescript
-import { createCache } from '@alexmchan/memocache'
-import { createTTLStore } from '@alexmchan/memocache/stores'
-import { Time } from '@alexmchan/memocache/time'
+import { createCache } from "@alexmchan/memocache"
+import { createTTLStore } from "@alexmchan/memocache/stores"
+import { Time } from "@alexmchan/memocache/time"
 
 const store = createTTLStore({
   defaultFresh: 30 * Time.Second,
@@ -69,7 +69,7 @@ const cachedFunction = createCachedFunction(async (arg) => {
 })
 
 // Use the cached function
-console.log(await cachedFunction('example'))
+console.log(await cachedFunction("example"))
 ```
 
 ## How it works
@@ -109,6 +109,7 @@ Creates a memoized version of a function.
 
 - `fn`: The function to memoize
 - `options`: Options for the memoized function
+- `options.cachePrefix`: A prefix will be auto generated based on the function contents for convenience and will add only fractions of a millisecond, however for very very large functions this might be a concern so one can specify a prefix such as `/api/todos` to scope the function to a known value. Note that any change to the function code will also change the cache key unless this value is set.
 - `options.ttl`: Time-To-Live for cache entries in ms
 - `options.fresh`: Revalidate stale data after this time in ms
 
@@ -125,8 +126,8 @@ const myCachedFunction = createCachedFunction(async ({ example }) => {
   return `Result for ${example}`
 })
 
-await myCachedFunction({ example: 'example' })
-await myCachedFunction.invalidate({ example: 'example' })
+await myCachedFunction({ example: "example" })
+await myCachedFunction.invalidate({ example: "example" })
 ```
 
 ### `Time` Constants
@@ -161,13 +162,13 @@ Creates a [libSql](https://www.npmjs.com/package/@libsql/client) SQLite store.
 - `options.cleanupInterval`: Interval for cleaning up expired entries
 
 ```typescript
-import { createCache } from '@alexmchan/memocache'
-import { createSqliteStore } from '@alexmchan/memocache/stores/sqlite'
-import { Time } from '@alexmchan/memocache/time'
-import { createClient } from '@libsql/client'
+import { createCache } from "@alexmchan/memocache"
+import { createSqliteStore } from "@alexmchan/memocache/stores/sqlite"
+import { Time } from "@alexmchan/memocache/time"
+import { createClient } from "@libsql/client"
 
 const sqliteClient = createClient({
-  url: 'file::memory:', // or file:./cache.db
+  url: "file::memory:", // or file:./cache.db
 })
 
 const sqliteStore = createSqliteStore({
@@ -189,11 +190,11 @@ const cache = createCache({
 An [ioredis](https://github.com/redis/ioredis) based store
 
 ```typescript
-import { Redis } from 'ioredis'
+import { Redis } from "ioredis"
 
 const redisStore = createRedisStore({
   redisClient: new Redis({
-    host: 'localhost',
+    host: "localhost",
     port: 6379,
   }),
   defaultTTL: 5 * Time.Minute,
@@ -205,7 +206,7 @@ const redisStore = createRedisStore({
 An [Upstash](https://github.com/upstash/redis-js) Redis store
 
 ```typescript
-import { Redis } from '@upstash/redis'
+import { Redis } from "@upstash/redis"
 const redisRestStore = createUpstashRedisStore({
   redisClient: new Redis({
     url: process.env.UPSTASH_REDIS_REST_URL,
@@ -227,6 +228,8 @@ const redisRestStore = createUpstashRedisStore({
 
 For serverless functions, the context object can be used to manage asynchronous operations. The context object has a `waitUntil` method that can be used to enqueue asynchronous tasks to be performed during the lifecycle of the request.
 
+The job of the context is to wait on any asynchronous operations that need to be completed before the function can return so it is left up to the implementer to decide what to do with the context. The context will be provided with promise(s) that need to be completed.
+
 As described in the Vercel documentation:
 
 > The waitUntil() method enqueues an asynchronous task to be performed during the lifecycle of the request. You can use it for anything that can be done after the response is sent, such as logging, sending analytics, or updating a cache, without blocking the response from being sent. waitUntil() is available in the Node.js and Edge Runtime. Promises passed to waitUntil() will have the same timeout as the function itself. If the function times out, the promises will be cancelled.
@@ -238,8 +241,8 @@ export interface Context {
   waitUntil: (p: Promise<unknown>) => void
 }
 
-import { Context } from './context'
-import { waitUntil } from '@vercel/functions'
+import { Context } from "./context"
+import { waitUntil } from "@vercel/functions"
 
 class VercelFunctionsContext implements Context {
   waitUntil(p: Promise<unknown>) {
@@ -338,8 +341,8 @@ A hash of the key/salt is used to encrypt the value and a part of the cache. Cha
 const ttlStore = createTTLStore({ defaultTTL: 60 * Time.Second })
 
 const encryptedStore = createEncryptedStore({
-  key: 'this is secret sauce',
-  salt: 'this is salty',
+  key: "this is secret sauce",
+  salt: "this is salty",
   store: ttlStore,
 })
 
@@ -357,7 +360,7 @@ Although it will work, it is better to setup and export the memozied function ou
 ```ts
 // ok but slower
 export function useExampleFn() {
-  const exampleFn = () => 'example'
+  const exampleFn = () => "example"
   const memoizedFn = createCachedFunction(exampleFn)
 
   return memoizedFn()
