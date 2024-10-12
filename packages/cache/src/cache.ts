@@ -1,3 +1,4 @@
+import { defaultLogger, Logger } from '@/logger'
 import { wrap } from './error'
 
 import { CacheError } from './error/cache-error'
@@ -46,6 +47,7 @@ interface CacheOptions {
   context?: Context
   defaultTTL?: number
   defaultFresh?: number
+  logger?: Logger
 }
 
 const DEFAULT_FRESH = 30 * Time.Second // when data is fresh we don't revalidate
@@ -55,6 +57,7 @@ export const createCache = ({
   stores,
   defaultTTL = DEFAULT_TTL,
   defaultFresh = DEFAULT_FRESH,
+  logger = defaultLogger,
   context,
 }: CacheOptions) => {
   let _context = context || new DefaultStatefulContext()
@@ -153,7 +156,7 @@ export const createCache = ({
     // If any store failed to update, log the error
     storesUpdatedResults.forEach((storeResult) => {
       if (storeResult.status === 'rejected') {
-        console.error(
+        logger.error(
           new CacheError({
             message: 'Failed to update cache store',
             key: queryKey,

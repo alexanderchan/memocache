@@ -1,3 +1,4 @@
+import { defaultLogger, Logger } from '@/logger'
 import { CacheStore } from '../cache'
 import { Time } from '@/time'
 import { Redis } from '@upstash/redis'
@@ -5,10 +6,12 @@ import { Redis } from '@upstash/redis'
 export const createUpstashRedisStore = ({
   redisClient: redisClientProp,
   defaultTTL = 5 * Time.Minute,
+  logger = defaultLogger,
 }: {
   /** Will default to new Redis.fromEnv() */
   redisClient?: Redis
   defaultTTL?: number
+  logger?: Logger
 } = {}) => {
   const redisClient =
     redisClientProp ||
@@ -19,9 +22,9 @@ export const createUpstashRedisStore = ({
 
   redisClient
     .ping()
-    .then(() => console.log('Connected to Upstash Redis'))
+    .then(() => logger.log('Connected to Upstash Redis'))
     .catch((err) => {
-      console.error('Failed to connect to Upstash Redis:', err)
+      logger.error('Failed to connect to Upstash Redis:', err)
     })
 
   return {

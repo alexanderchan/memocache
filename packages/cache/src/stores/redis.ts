@@ -1,3 +1,4 @@
+import { defaultLogger, Logger } from '@/logger'
 import { CacheStore } from '../cache'
 import { Time } from '@/time'
 import { Redis } from 'ioredis'
@@ -6,9 +7,11 @@ import superjson from 'superjson'
 export const createRedisStore = ({
   redisClient: redisClientProp,
   defaultTTL = 5 * Time.Minute,
+  logger = defaultLogger,
 }: {
   redisClient?: Redis
   defaultTTL?: number
+  logger?: Logger
 } = {}) => {
   const redisClient = redisClientProp || new Redis()
 
@@ -16,7 +19,7 @@ export const createRedisStore = ({
     .info()
     .then((info) => {})
     .catch((err) => {
-      console.error('Failed to connect to Redis:', err)
+      logger.error('Failed to connect to Redis:', err)
     })
 
   return {

@@ -104,12 +104,12 @@ async function benchmark() {
 
   async function runAllBenchmarks({ iterations }: { iterations: number }) {
     for (const { name, store } of stores) {
-      console.log(`Running benchmark for ${name}...`)
+      console.info(`Running benchmark for ${name}...`)
       const results = await runBenchmark(store, iterations)
 
       // Calculate and print results
       const avgTime = results.reduce((a, b) => a + b, 0) / results.length
-      console.log(`${name} average time: ${avgTime.toFixed(3)}ms`)
+      console.info(`${name} average time: ${avgTime.toFixed(3)}ms`)
     }
   }
 

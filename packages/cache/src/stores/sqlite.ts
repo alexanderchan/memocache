@@ -2,6 +2,7 @@ import { createClient, Client as SqliteClient, Config } from '@libsql/client'
 import { CacheStore } from '@/cache'
 import { Time } from '@/time'
 import superjson from 'superjson'
+import { defaultLogger, Logger } from '@/logger'
 
 export interface SqliteStoreConfig {
   /** libSql SQLite client configuration
@@ -14,6 +15,7 @@ export interface SqliteStoreConfig {
   cleanupInterval?: number
   /** Default time-to-live for cache entries */
   defaultTTL?: number
+  logger?: Logger
 }
 
 interface SqliteStore extends CacheStore {
@@ -29,6 +31,7 @@ export function createSqliteStore({
   tableName = 'cache',
   defaultTTL = 5 * Time.Minute,
   cleanupInterval = 5 * Time.Minute,
+  logger = defaultLogger,
 }: SqliteStoreConfig = {}): SqliteStore {
   let cleanupIntervalId: NodeJS.Timeout
   let hasInitializedDb: boolean = false
@@ -49,7 +52,7 @@ export function createSqliteStore({
             )
           `)
     } catch (error) {
-      console.error('Failed to initialize SQLite store:', error)
+      logger.error('Failed to initialize SQLite store:', error)
     }
 
     try {
@@ -57,7 +60,7 @@ export function createSqliteStore({
             CREATE INDEX IF NOT EXISTS idx_${tableName}_expires ON ${tableName}(expires)
           `)
     } catch (error) {
-      console.error('Failed to create index on SQLite store:', error)
+      logger.error('Failed to create index on SQLite store:', error)
     }
   }
 
@@ -78,7 +81,7 @@ export function createSqliteStore({
 
   const dispose = async () => {
     if (cleanupIntervalId) {
-      cleanup().catch(console.error)
+      cleanup().catch(logger.error)
       clearInterval(cleanupIntervalId)
     }
   }
@@ -132,7 +135,7 @@ export function createSqliteStore({
         clearInterval(cleanupIntervalId)
       }
       cleanupIntervalId = setInterval(() => {
-        this.cleanup().catch(console.error)
+        this.cleanup().catch(logger.error)
       }, cleanupInterval)
     },
     clear: async () => {
