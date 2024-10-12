@@ -7,6 +7,8 @@ import { Time } from './time'
 import { Context, DefaultStatefulContext } from '@/context'
 
 export interface CacheStore extends AsyncDisposable {
+  /** a name for metrics */
+  name: string
   /** Set a value in the store, ttl in milliseconds */
   set(key: string, value: any, ttl?: number): Promise<any>
   get(key: string): Promise<any>
@@ -19,11 +21,13 @@ export interface CacheStore extends AsyncDisposable {
 }
 
 export function hashString(str: string) {
+  // we would need a lazy hash function to set this
+  // https://github.com/vercel/examples/blob/main/edge-middleware/crypto/pages/api/crypto.ts
   return createHash('SHA256').update(str).digest('hex')
 }
 
 // we need a stable key for the function
-function generateFunctionKey(fn: Function): string {
+function generateFunctionKey(fn: Function & { hashKey?: string }): string {
   const functionStr = fn.toString()
 
   // SHA256 should be node crypto hardware optimized, MD5 is another option
@@ -92,11 +96,16 @@ export const createCache = ({
     // No data in cache, fetch from the source
 
     const newData = await queryFn()
-    await Promise.all(
+
+    const writeToStoresPromise = Promise.allSettled(
       stores.map((store) =>
         store.set(key, { value: newData, age: Date.now() }, localOptions?.ttl),
       ),
     )
+
+    // kick off the store updates in the background
+    context?.waitUntil?.(writeToStoresPromise)
+
     return newData
   }
 
@@ -157,7 +166,7 @@ export const createCache = ({
   }
 
   function dispose() {
-    return Promise.all(stores.map((store) => store.dispose?.()))
+    return Promise.allSettled(stores.map((store) => store.dispose?.()))
   }
 
   //  a memoize function that uses the function.toString() to generate a key
@@ -180,7 +189,7 @@ export const createCache = ({
     cachedFunction.uncached = fn
     cachedFunction.delete = async (...args: Parameters<T>) => {
       const key = hashKey([generateFunctionKey(fn), args])
-      await Promise.all(stores.map((store) => store.delete(key)))
+      await Promise.allSettled(stores.map((store) => store.delete(key)))
     }
 
     return cachedFunction
