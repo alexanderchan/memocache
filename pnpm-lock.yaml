@@ -57,6 +57,9 @@ importers:
       ioredis:
         specifier: ^5.4.1
         version: 5.4.1
+      just-memoize-last:
+        specifier: ^3.2.0
+        version: 3.2.0
       superjson:
         specifier: ^2.2.1
         version: 2.2.1
@@ -76,6 +79,9 @@ importers:
       tsup:
         specifier: ^8.3.0
         version: 8.3.0(jiti@1.21.0)(postcss@8.4.45)(typescript@5.6.2)(yaml@2.5.1)
+      typescript:
+        specifier: ^5.6.2
+        version: 5.6.2
       vitest:
         specifier: ^2.1.2
         version: 2.1.2(@types/node@22.7.4)
@@ -2083,6 +2089,9 @@ packages:
 
   jsonfile@4.0.0:
     resolution: {integrity: sha512-m6F1R3z8jjlf2imQHS2Qez5sjKWQzbuuhuJ/FKYFRZvPE3PuHcSMVZzfsLhGVOkfd20obL5SWEBew5ShlquNxg==}
+
+  just-memoize-last@3.2.0:
+    resolution: {integrity: sha512-t6ycS4EDyfdF4BuI/VTKSoGXH7MmQ0XVBNk5pEDP+0cLrOws2JRmzFnkEg0WWps59u9vAXiP58IVXtpG3FN3uw==}
 
   kind-of@6.0.3:
     resolution: {integrity: sha512-dcS1ul+9tmeD95T+x28/ehLgd9mENa3LsvDTtzm3vyBEO7RPptvAD+t44WVXaUjTBRcrpFeFlC8WCruUR456hw==}
@@ -5890,6 +5899,8 @@ snapshots:
   jsonfile@4.0.0:
     optionalDependencies:
       graceful-fs: 4.2.11
+
+  just-memoize-last@3.2.0: {}
 
   kind-of@6.0.3: {}
 

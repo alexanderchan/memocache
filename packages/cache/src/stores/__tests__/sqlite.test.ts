@@ -11,9 +11,10 @@ import { createTTLStore } from '../ttl'
 import { Time } from '@/time'
 import { hashKey } from '@/hash-key'
 import { createSqliteStore } from '@/stores/sqlite'
+import { CacheStore } from '@/cache'
 
 describe('TTL Cache', () => {
-  let store: ReturnType<typeof createTTLStore>
+  let store: CacheStore
 
   beforeEach(() => {
     vi.useFakeTimers()

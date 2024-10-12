@@ -6,7 +6,7 @@ import { createEncryptedStore } from '@/middleware/encryption'
 
 describe('Encrypted TTL Cache', () => {
   let ttlCache: ReturnType<typeof createTTLStore>
-  let cache: ReturnType<typeof createTTLStore>
+  let cache: ReturnType<typeof createEncryptedStore>
 
   beforeEach(() => {
     vi.useFakeTimers()

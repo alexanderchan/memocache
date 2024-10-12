@@ -1,5 +1,5 @@
 {
-  "include": ["**/*.ts", "**/*.js", "*.ts", "*.tsx", "vitest.config.mjs"],
+  "include": ["./**/*.ts", "**/*.js", "*.ts", "*.tsx", "vitest.config.mjs"],
   "exclude": ["node_modules", "dist", "build"],
   "compilerOptions": {
     /* Visit https://aka.ms/tsconfig to read more about this file */

@@ -9,7 +9,7 @@ const encryptMemoized = memoizeLast(
   encrypt,
   // approximately 4x faster than the encryption
   (lastValue, value) =>
-    superjson.stringify(lastValue) === superjson.stringify(value),
+    superjson.stringify(lastValue) === superjson.stringify(value)
 )
 
 export function createEncryptedStore({
@@ -49,7 +49,7 @@ export function createEncryptedStore({
       encoder.encode(key),
       { name: 'PBKDF2' },
       false,
-      ['deriveBits', 'deriveKey'],
+      ['deriveBits', 'deriveKey']
     )
 
     const encodedSalt = encoder.encode(salt) // You might want to store this salt securely
@@ -64,7 +64,7 @@ export function createEncryptedStore({
       keyMaterial,
       { name: 'AES-GCM', length: 256 },
       false,
-      ['encrypt', 'decrypt'],
+      ['encrypt', 'decrypt']
     )
 
     cryptoKey = derivedKey
@@ -94,7 +94,7 @@ export function createEncryptedStore({
       }
       return decrypt(iv, ciphertext, cryptoKey)
     },
-    async set(key: string, value: any, ttl: number) {
+    async set(key: string, value: any, ttl?: number) {
       await lazyInitialize()
 
       // need to benchmark to see if serialization vs re-encrypting is faster
@@ -116,7 +116,7 @@ export function createEncryptedStore({
 // Encryption function
 async function encrypt(
   data: any,
-  cryptoKey: CryptoKey,
+  cryptoKey: CryptoKey
 ): Promise<{ iv: string; ciphertext: string }> {
   const encoder = new TextEncoder()
   const iv = crypto.getRandomValues(new Uint8Array(12))
@@ -124,7 +124,7 @@ async function encrypt(
   const ciphertext = await crypto.subtle.encrypt(
     { name: 'AES-GCM', iv },
     cryptoKey,
-    encodedData,
+    encodedData
   )
   return {
     iv: btoa(String.fromCharCode(...iv)),
@@ -136,16 +136,16 @@ async function encrypt(
 async function decrypt(
   iv: string,
   ciphertext: string,
-  cryptoKey: CryptoKey,
+  cryptoKey: CryptoKey
 ): Promise<any> {
   const decodedIv = Uint8Array.from(atob(iv), (c) => c.charCodeAt(0))
   const decodedCiphertext = Uint8Array.from(atob(ciphertext), (c) =>
-    c.charCodeAt(0),
+    c.charCodeAt(0)
   )
   const decryptedBuffer = await crypto.subtle.decrypt(
     { name: 'AES-GCM', iv: decodedIv },
     cryptoKey,
-    decodedCiphertext,
+    decodedCiphertext
   )
 
   const decoder = new TextDecoder()
