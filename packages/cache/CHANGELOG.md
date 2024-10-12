@@ -1,5 +1,11 @@
 # @alexmchan/memocache
 
+## 0.1.5
+
+### Patch Changes
+
+- eff456f: Updates to api
+
 ## 0.1.4
 
 ### Patch Changes
