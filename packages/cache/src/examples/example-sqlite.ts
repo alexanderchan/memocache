@@ -22,7 +22,9 @@ async function main() {
 
   const cache = createCache({
     stores: [sqliteStore],
-    defaultOptons: { ttl: 10 * Time.Millisecond, fresh: 5 * Time.Millisecond },
+    // really low for testing make these higher
+    defaultFresh: 200 * Time.Millisecond,
+    defaultTTL: 2 * Time.Second,
   })
 
   const { createCachedFunction, cacheQuery, dispose } = cache

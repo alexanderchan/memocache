@@ -47,7 +47,9 @@ const localContext = new SimpleContext()
 
 export const { createCachedFunction, cacheQuery, dispose } = createCache({
   stores: [encryptedRedisStore],
-  defaultOptons: { ttl: 2 * Time.Second, fresh: 200 * Time.Millisecond },
+  // really low for testing make these higher
+  defaultFresh: 200 * Time.Millisecond,
+  defaultTTL: 2 * Time.Second,
   context: localContext,
 })
 
