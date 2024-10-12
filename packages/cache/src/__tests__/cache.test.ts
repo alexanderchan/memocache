@@ -142,6 +142,14 @@ describe('cacheQuery', () => {
     const workFunction = vi.fn().mockResolvedValue('test')
     const memoizedFn = cache.createCachedFunction(workFunction)
 
+    let count = 0
+    const countFunction = vi.fn(({ message }) => {
+      count++
+      return `Hello, ${message}, ${count}!`
+    })
+
+    const memoizedCountFn = cache.createCachedFunction(countFunction)
+
     const firstCallResult = await memoizedFn()
     expect(workFunction).toHaveBeenCalledTimes(1)
     expect(firstCallResult).toBe('test')
@@ -159,11 +167,57 @@ describe('cacheQuery', () => {
 
     await memoizedFn({ example: 'true', other: 'false' })
     expect(workFunction).toHaveBeenCalledTimes(3)
+
+    memoizedCountFn.invalidate({ message: 'world' })
+
+    expect(countFunction).toHaveBeenCalledTimes(0)
+    const firstCountResult = await memoizedCountFn({ message: 'world' })
+    expect(workFunction).toHaveBeenCalledTimes(3)
+    expect(countFunction).toHaveBeenCalledTimes(1)
+
+    expect(firstCountResult).toBe('Hello, world, 1!')
+    const secondCountResult = await memoizedCountFn({ message: 'world' })
+    expect(secondCountResult).toBe('Hello, world, 1!')
+    expect(countFunction).toHaveBeenCalledTimes(1)
+  })
+
+  it('should invalidate the memoized cache', async () => {
+    const workFunction = vi.fn().mockResolvedValue('test')
+    const memoizedFn = cache.createCachedFunction(workFunction)
+
+    const firstCallResult = await memoizedFn({ example: true })
+    expect(workFunction).toHaveBeenCalledTimes(1)
+    expect(firstCallResult).toBe('test')
+
+    await memoizedFn.invalidate({ example: true })
+    await memoizedFn({ example: true })
+    expect(workFunction).toHaveBeenCalledTimes(2)
+    await memoizedFn({ example: true })
+    expect(workFunction).toHaveBeenCalledTimes(2)
   })
 
   it('should allow memoized passthrough', async () => {
     const workFunction = vi.fn().mockResolvedValue('test')
     const memoizedFn = cache.createCachedFunction(workFunction)
+    const sameCachedFn = cache.createCachedFunction(workFunction)
+    const differentCachedFn = cache.createCachedFunction(() => 'different')
+
+    // identical hashes
+    expect(await memoizedFn.getCachePrefix()).toBe(
+      await sameCachedFn.getCachePrefix(),
+    )
+
+    // different hashes
+    expect(await memoizedFn.getCachePrefix()).not.toBe(
+      await differentCachedFn.getCachePrefix(),
+    )
+
+    // a constant function returns the same hash prefix
+    // so this will be the same between runs
+    // but any small difference will invalidate the cache
+    expect(await differentCachedFn.getCachePrefix()).toMatchInlineSnapshot(
+      `"6f80c34d72bd3ff791b7798bacdcf1caab6c332399ffed522a774d78b59ac3bf"`,
+    )
 
     const firstCallResult = await memoizedFn()
     expect(workFunction).toHaveBeenCalledTimes(1)

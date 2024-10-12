@@ -109,6 +109,7 @@ Creates a memoized version of a function.
 
 - `fn`: The function to memoize
 - `options`: Options for the memoized function
+- `options.cachePrefix`: A prefix will be auto generated based on the function contents for convenience and will add only fractions of a millisecond, however for very very large functions this might be a concern so one can specify a prefix such as `/api/todos` to scope the function to a known value. Note that any change to the function code will also change the cache key unless this value is set.
 - `options.ttl`: Time-To-Live for cache entries in ms
 - `options.fresh`: Revalidate stale data after this time in ms
 
