@@ -12,29 +12,7 @@ This package provides a flexible and extensible caching solution for Node.js app
 - Multiple storage backend support (e.g., in-memory TTL store, SQLite)
 - Configurable TTL (Time-To-Live) for cache entries
 - Automatic background revalidation of stale data
-- Function memoization with cache key generation
-- Async/await support
-- TypeScript support
-
-## Motivation
-
-It can be a lot of setup to use a cache. This package provides a simple to use cache that supports stale while revalidation. The typical pattern for caching requires:
-
-- finding a good key to use for the cache
-- checking if the key exists in the cache
-- if the key does not exist, fetching the data and storing it in the cache
-- if the key does exist, returning the data from the cache
-- optionally:
-  - setting a TTL on the cached value
-  - setting a stale while revalidation policy
-  - setting a cache store
-  - setting up encrypted caches
-
-One may also want to write back to multiple stores such as an in memory TTL Cache, a local sqlite instance, or Redis. This package provides a simple to use API that supports all of these features.
-
-We use the stable stringified hash popularized by react-query to generate the cache key. This allows for easy generation of the cache key based on the function signature and arguments allowing us to easily memoize functions.
-
-This also supports the stale while revalidate pattern allowing to return stale data while fetching fresh data in the background.
+- Function memoization with automatic cache key generation `const cachedFunction = createCachedFunction(async () => "I'm cached")`
 
 ## Installation
 
@@ -47,9 +25,9 @@ pnpm install @alexmchan/memocache
 ### Basic Usage with TTL Store
 
 ```typescript
-import { createCache } from "@alexmchan/memocache"
-import { createTTLStore } from "@alexmchan/memocache/stores"
-import { Time } from "@alexmchan/memocache/time"
+import { createCache } from '@alexmchan/memocache'
+import { createTTLStore } from '@alexmchan/memocache/stores'
+import { Time } from '@alexmchan/memocache/time'
 
 const store = createTTLStore({
   defaultFresh: 30 * Time.Second,
@@ -69,7 +47,7 @@ const cachedFunction = createCachedFunction(async (arg) => {
 })
 
 // Use the cached function
-console.log(await cachedFunction("example"))
+console.log(await cachedFunction('example'))
 ```
 
 ## How it works
@@ -80,12 +58,32 @@ console.log(await cachedFunction("example"))
 
 3. If the data is past it's time to live it will be expired from the store
 
-![An illustration of planets and stars featuring the word “astro”](https://raw.githubusercontent.com/alexanderchan/memocache/refs/heads/main/docs/src/assets/overview-diagram.svg)
+![An illustration of planets and stars featuring the word “astro”](https://raw.githubusercontent.com/alexanderchan/memocache/refs/heads/main/docs/src/assets/overview-diagram-1.svg)
 
 <!--
 this diagram is in docs/src/assets/overview-diagram.svg
 and can be generated from the script in docs
  -->
+
+## Motivation
+
+There can be a lot of wrapper code to use a cache. This package provides a simple to use cache that supports stale while revalidation. The typical pattern for caching requires:
+
+- finding a good key to use for the cache, typically the parameters to the function
+- checking if the key exists in the cache
+- if the key does not exist, fetching the data and storing it in the cache
+- if the key does exist, returning the data from the cache
+- optionally:
+  - setting a TTL on the cached value
+  - setting a stale while revalidation policy
+  - setting a cache store
+  - setting up encrypted caches
+
+One may also want to write back to multiple stores such as an in memory TTL Cache, a local sqlite instance, or Redis. This package provides a simple to use API that supports all of these features.
+
+We use the stable stringified hash popularized by react-query to generate the cache key and a sha256 hash of any function code. This allows for easy generation of the cache key based on the function signature and arguments allowing us to easily memoize functions.
+
+This also supports the stale while revalidate pattern allowing to return stale data while fetching fresh data in the background.
 
 ## API Reference
 
@@ -108,8 +106,8 @@ Returns an object with the following methods:
 Creates a memoized version of a function.
 
 - `fn`: The function to memoize
-- `options`: Options for the memoized function
-- `options.cachePrefix`: A prefix will be auto generated based on the function contents for convenience and will add only fractions of a millisecond, however for very very large functions this might be a concern so one can specify a prefix such as `/api/todos` to scope the function to a known value. Note that any change to the function code will also change the cache key unless this value is set.
+- `options`(optional): Options for the memoized function
+- `options.cachePrefix`): A prefix will be auto generated based on the function contents for convenience and will add only fractions of a millisecond, however for very very large functions this might be a concern so one can specify a prefix such as `/api/todos` to scope the function to a known value. Note that any change to the function code will also change the cache key unless this value is set.
 - `options.ttl`: Time-To-Live for cache entries in ms
 - `options.fresh`: Revalidate stale data after this time in ms
 
@@ -126,8 +124,8 @@ const myCachedFunction = createCachedFunction(async ({ example }) => {
   return `Result for ${example}`
 })
 
-await myCachedFunction({ example: "example" })
-await myCachedFunction.invalidate({ example: "example" })
+await myCachedFunction({ example: 'example' })
+await myCachedFunction.invalidate({ example: 'example' })
 ```
 
 ### `Time` Constants
@@ -162,13 +160,13 @@ Creates a [libSql](https://www.npmjs.com/package/@libsql/client) SQLite store.
 - `options.cleanupInterval`: Interval for cleaning up expired entries
 
 ```typescript
-import { createCache } from "@alexmchan/memocache"
-import { createSqliteStore } from "@alexmchan/memocache/stores/sqlite"
-import { Time } from "@alexmchan/memocache/time"
-import { createClient } from "@libsql/client"
+import { createCache } from '@alexmchan/memocache'
+import { createSqliteStore } from '@alexmchan/memocache/stores/sqlite'
+import { Time } from '@alexmchan/memocache/time'
+import { createClient } from '@libsql/client'
 
 const sqliteClient = createClient({
-  url: "file::memory:", // or file:./cache.db
+  url: 'file::memory:', // or file:./cache.db
 })
 
 const sqliteStore = createSqliteStore({
@@ -190,11 +188,11 @@ const cache = createCache({
 An [ioredis](https://github.com/redis/ioredis) based store
 
 ```typescript
-import { Redis } from "ioredis"
+import { Redis } from 'ioredis'
 
 const redisStore = createRedisStore({
   redisClient: new Redis({
-    host: "localhost",
+    host: 'localhost',
     port: 6379,
   }),
   defaultTTL: 5 * Time.Minute,
@@ -206,7 +204,7 @@ const redisStore = createRedisStore({
 An [Upstash](https://github.com/upstash/redis-js) Redis store
 
 ```typescript
-import { Redis } from "@upstash/redis"
+import { Redis } from '@upstash/redis'
 const redisRestStore = createUpstashRedisStore({
   redisClient: new Redis({
     url: process.env.UPSTASH_REDIS_REST_URL,
@@ -241,8 +239,8 @@ export interface Context {
   waitUntil: (p: Promise<unknown>) => void
 }
 
-import { Context } from "./context"
-import { waitUntil } from "@vercel/functions"
+import { Context } from './context'
+import { waitUntil } from '@vercel/functions'
 
 class VercelFunctionsContext implements Context {
   waitUntil(p: Promise<unknown>) {
@@ -341,8 +339,8 @@ A hash of the key/salt is used to encrypt the value and a part of the cache. Cha
 const ttlStore = createTTLStore({ defaultTTL: 60 * Time.Second })
 
 const encryptedStore = createEncryptedStore({
-  key: "this is secret sauce",
-  salt: "this is salty",
+  key: 'this is secret sauce',
+  salt: 'this is salty',
   store: ttlStore,
 })
 
@@ -360,7 +358,7 @@ Although it will work, it is better to setup and export the memozied function ou
 ```ts
 // ok but slower
 export function useExampleFn() {
-  const exampleFn = () => "example"
+  const exampleFn = () => 'example'
   const memoizedFn = createCachedFunction(exampleFn)
 
   return memoizedFn()

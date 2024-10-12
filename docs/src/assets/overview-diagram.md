@@ -18,8 +18,10 @@ sequenceDiagram
     App->>Origin: Fetch Fresh Data
     Origin-->>App: Return Fresh Data
     App-->>Client: Return Fresh Data
-    App->>TTL: Store in TTL Cache
-    App->>Redis: Store in Redis Cache
+    par Update Caches
+        App->>TTL: Store in TTL Cache
+        App->>Redis: Store in Redis Cache
+    end
 
     Note over Client,Origin: Scenario 2: Cache Hit (Fresh Data)
 
@@ -38,6 +40,8 @@ sequenceDiagram
     App-->>Client: Return Stale Data
     App->>Origin: Fetch Fresh Data (Background)
     Origin-->>App: Return Fresh Data
-    App->>TTL: Update TTL Cache
-    App->>Redis: Update Redis Cache
+    par Update Caches
+        App->>TTL: Update TTL Cache
+        App->>Redis: Update Redis Cache
+    end
 ```
