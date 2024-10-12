@@ -19,8 +19,12 @@
       "cache": false,
       "persistent": true
     },
+    "format": {
+      "dependsOn": ["^format"]
+    },
+    "//#format:root": {},
     "ci": {
-      "dependsOn": ["^ci", "typecheck", "test"]
+      "dependsOn": ["^ci", "typecheck", "test", "//#format:root"]
     }
   }
 }

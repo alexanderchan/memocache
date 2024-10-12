@@ -7,6 +7,8 @@
     "ci": "turbo run ci",
     "build": "turbo build",
     "test": "turbo run test",
+    "format:root": "prettier \"**/*.{ts,tsx,md,js,json}\" --check --cache",
+    "format:fix": "prettier --write \"**/*.{ts,tsx,md,json}\"",
     "typecheck": "turbo run typecheck",
     "local-release": "changeset version && changeset publish"
   },
@@ -14,7 +16,8 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@changesets/cli": "^2.27.9"
+    "@changesets/cli": "^2.27.9",
+    "prettier": "^3.3.3"
   },
   "devDependencies": {
     "turbo": "^2.1.3"

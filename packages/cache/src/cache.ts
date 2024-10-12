@@ -94,8 +94,8 @@ export const createCache = ({
     const newData = await queryFn()
     await Promise.all(
       stores.map((store) =>
-        store.set(key, { value: newData, age: Date.now() }, localOptions?.ttl)
-      )
+        store.set(key, { value: newData, age: Date.now() }, localOptions?.ttl),
+      ),
     )
     return newData
   }
@@ -111,7 +111,7 @@ export const createCache = ({
   }) => {
     const newData = await wrap(
       await queryFn(),
-      (err: Error) => new CacheError({ message: err.message, key: queryKey })
+      (err: Error) => new CacheError({ message: err.message, key: queryKey }),
     )
     if (newData?.err) {
       return
@@ -124,9 +124,9 @@ export const createCache = ({
           await store.set(
             queryKey,
             { value: newData?.val, age: Date.now() },
-            ttl
-          )
-      )
+            ttl,
+          ),
+      ),
     )
 
     const storesUpdatedResults = await storesUpdatedResultsPromise
@@ -140,7 +140,7 @@ export const createCache = ({
           new CacheError({
             message: 'Failed to update cache store',
             key: queryKey,
-          })
+          }),
         )
       }
     })
@@ -164,7 +164,7 @@ export const createCache = ({
 
   function createCachedFunction<T extends (...args: any[]) => any>(
     fn: T,
-    options?: CacheQueryOptions
+    options?: CacheQueryOptions,
   ) {
     const key = generateFunctionKey(fn)
 

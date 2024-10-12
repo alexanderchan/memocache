@@ -282,7 +282,7 @@ Note that a similar behaviour could be achieved to add additional keys by wrappi
 
 ```ts
 const memoizedFn = createCachedFunction(({ storeId, customerId }) =>
-  exampleFn({ storeId })
+  exampleFn({ storeId }),
 )
 ```
 
