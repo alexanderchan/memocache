@@ -1,5 +1,5 @@
 // https://github.com/unkeyed/unkey/blob/main/packages/error/src/error-handling.ts
-import type { BaseError } from './base-error'
+import type { BaseError } from "./base-error"
 
 type OkResult<V> = {
   val: V

@@ -7,5 +7,6 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
+  "//ignore is broken on ci": "https://github.com/changesets/bot/issues/82",
   "ignore": ["*/*docs"]
 }

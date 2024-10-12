@@ -1,7 +1,7 @@
-import { CacheStore } from '../cache'
-import { Time } from '@/time'
-import { Redis } from 'ioredis'
-import superjson from 'superjson'
+import { CacheStore } from "../cache"
+import { Time } from "@/time"
+import { Redis } from "ioredis"
+import superjson from "superjson"
 
 export const createRedisStore = ({
   redisClient: redisClientProp,
@@ -16,13 +16,13 @@ export const createRedisStore = ({
     .info()
     .then((info) => {})
     .catch((err) => {
-      console.error('Failed to connect to Redis:', err)
+      console.error("Failed to connect to Redis:", err)
     })
 
   return {
-    name: 'ioredis',
+    name: "ioredis",
     async set(key, value, ttl = defaultTTL) {
-      await redisClient.set(key, superjson.stringify(value), 'PX', ttl)
+      await redisClient.set(key, superjson.stringify(value), "PX", ttl)
     },
     async get(key) {
       const data = await redisClient.get(key)

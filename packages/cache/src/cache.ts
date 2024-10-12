@@ -1,9 +1,9 @@
-import { wrap } from './error'
+import { wrap } from "./error"
 
-import { CacheError } from './error/cache-error'
-import { hashKey, QueryKey } from './hash-key'
-import { Time } from './time'
-import { Context, DefaultStatefulContext } from '@/context'
+import { CacheError } from "./error/cache-error"
+import { hashKey, QueryKey } from "./hash-key"
+import { Time } from "./time"
+import { Context, DefaultStatefulContext } from "@/context"
 
 export interface CacheStore extends AsyncDisposable {
   /** a name for metrics */
@@ -25,9 +25,9 @@ export async function hashString(str: string): Promise<string> {
   // createHash('SHA256').update(str).digest('hex')
   // https://github.com/vercel/examples/blob/main/edge-middleware/crypto/pages/api/crypto.ts
   const encoder = new TextEncoder()
-  const digest = await crypto.subtle.digest('SHA-256', encoder.encode(str))
+  const digest = await crypto.subtle.digest("SHA-256", encoder.encode(str))
   const hashArray = Array.from(new Uint8Array(digest)) // convert buffer to byte array
-  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('') // convert bytes to hex string
+  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("") // convert bytes to hex string
 
   return hashHex
 }
@@ -150,10 +150,10 @@ export const createCache = ({
 
     // If any store failed to update, log the error
     storesUpdatedResults.forEach((storeResult) => {
-      if (storeResult.status === 'rejected') {
+      if (storeResult.status === "rejected") {
         console.error(
           new CacheError({
-            message: 'Failed to update cache store',
+            message: "Failed to update cache store",
             key: queryKey,
           }),
         )
@@ -182,7 +182,7 @@ export const createCache = ({
     options?: CacheQueryOptions,
   ) {
     const cachedFunctionSettings = {
-      cachePrefix: options?.cachePrefix ?? '',
+      cachePrefix: options?.cachePrefix ?? "",
     }
 
     async function getCachePrefix() {

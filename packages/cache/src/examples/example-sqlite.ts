@@ -1,7 +1,7 @@
-import { createCache } from '@/cache'
-import { createSqliteStore } from '@/stores/sqlite'
-import { Time } from '@/time'
-import { createClient } from '@libsql/client'
+import { createCache } from "@/cache"
+import { createSqliteStore } from "@/stores/sqlite"
+import { Time } from "@/time"
+import { createClient } from "@libsql/client"
 
 let count = 0
 function hello({ message }: { message: string }) {
@@ -11,7 +11,7 @@ function hello({ message }: { message: string }) {
 
 async function main() {
   const sqliteClient = createClient({
-    url: 'file::memory:',
+    url: "file::memory:",
   })
 
   await using sqliteStore = createSqliteStore({
@@ -29,14 +29,14 @@ async function main() {
 
   const cachedHello = createCachedFunction(hello)
 
-  await cachedHello.invalidate({ message: 'world' })
+  await cachedHello.invalidate({ message: "world" })
 
-  console.log(await cachedHello({ message: 'world' }))
-  console.log(await cachedHello({ message: 'world' }))
+  console.log(await cachedHello({ message: "world" }))
+  console.log(await cachedHello({ message: "world" }))
 
   await new Promise((resolve) =>
     setTimeout(async () => {
-      console.log(await cachedHello({ message: 'world' }))
+      console.log(await cachedHello({ message: "world" }))
       resolve(null)
     }, 600 * Time.Millisecond),
   )
