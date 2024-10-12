@@ -30,7 +30,7 @@ One may also want to write back to multiple stores such as an in memory TTL Cach
 ## Installation
 
 ```bash
-npm install @gdcorp-commerce/cache
+npm install @alexmchan/cache
 ```
 
 ## Usage
@@ -38,9 +38,9 @@ npm install @gdcorp-commerce/cache
 ### Basic Usage with TTL Store
 
 ```typescript
-import { createCache } from '@gdcorp-commerce/cache'
-import { createTTLStore } from '@gdcorp-commerce/cache/stores'
-import { Time } from '@gdcorp-commerce/cache/time'
+import { createCache } from '@alexmchan/cache'
+import { createTTLStore } from '@alexmchan/cache/stores'
+import { Time } from '@alexmchan/cache/time'
 
 const store = createTTLStore({
   defaultTTL: 5 * Time.Minute,
@@ -66,9 +66,9 @@ console.log(await cachedFunction('example'))
 ### Using SQLite Store
 
 ```typescript
-import { createCache } from '@gdcorp-commerce/cache'
-import { createSqliteStore } from '@gdcorp-commerce/cache/stores/sqlite'
-import { Time } from '@gdcorp-commerce/cache/time'
+import { createCache } from '@alexmchan/cache'
+import { createSqliteStore } from '@alexmchan/cache/stores/sqlite'
+import { Time } from '@alexmchan/cache/time'
 import { createClient } from '@libsql/client'
 
 const sqliteClient = createClient({
@@ -193,7 +193,7 @@ Note that a similar behaviour could be achieved to add additional keys by wrappi
 
 ```ts
 const memoizedFn = createCachedFunction(({ storeId, customerId }) =>
-  exampleFn({ storeId }),
+  exampleFn({ storeId })
 )
 ```
 
