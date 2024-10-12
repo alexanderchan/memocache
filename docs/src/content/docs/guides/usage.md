@@ -27,9 +27,9 @@ pnpm install @alexmchan/memocache
 ### Basic Usage with TTL Store
 
 ```typescript
-import { createCache } from '@alexmchan/memocache'
-import { createTTLStore } from '@alexmchan/memocache/stores'
-import { Time } from '@alexmchan/memocache/time'
+import { createCache } from "@alexmchan/memocache"
+import { createTTLStore } from "@alexmchan/memocache/stores"
+import { Time } from "@alexmchan/memocache/time"
 
 const ttlStore = createTTLStore({
   defaultTTL: 5 * Time.Minute,
@@ -48,7 +48,7 @@ const cachedFunction = createCachedFunction(async (arg) => {
 })
 
 // Use the cached function
-console.log(await cachedFunction('example'))
+console.log(await cachedFunction("example"))
 ```
 
 ## How it works
@@ -93,13 +93,13 @@ Creates a libSql SQLite store.
 - `options.cleanupInterval`: Interval for cleaning up expired entries
 
 ```typescript
-import { createCache } from '@alexmchan/memocache'
-import { createSqliteStore } from '@alexmchan/memocache/stores/sqlite'
-import { Time } from '@alexmchan/memocache/time'
-import { createClient } from '@libsql/client'
+import { createCache } from "@alexmchan/memocache"
+import { createSqliteStore } from "@alexmchan/memocache/stores/sqlite"
+import { Time } from "@alexmchan/memocache/time"
+import { createClient } from "@libsql/client"
 
 const sqliteClient = createClient({
-  url: 'file::memory:', // or file:./cache.db
+  url: "file::memory:", // or file:./cache.db
 })
 
 const sqliteStore = createSqliteStore({
@@ -119,11 +119,11 @@ const cache = createCache({
 ### Redis Store
 
 ```typescript
-import { Redis } from 'ioredis'
+import { Redis } from "ioredis"
 
 const redisStore = createRedisStore({
   redisClient: new Redis({
-    host: 'localhost',
+    host: "localhost",
     port: 6379,
   }),
   defaultTTL: 5 * Time.Minute,
@@ -133,7 +133,7 @@ const redisStore = createRedisStore({
 ## Upstash Redis Store
 
 ```typescript
-import { Redis } from '@upstash/redis'
+import { Redis } from "@upstash/redis"
 const redisRestStore = createUpstashRedisStore({
   redisClient: new Redis({
     url: process.env.UPSTASH_REDIS_REST_URL,
@@ -156,8 +156,8 @@ const myCachedFunction = createCachedFunction(async ({ example }) => {
   return `Result for ${example}`
 })
 
-await myCachedFunction({ example: 'example' })
-await myCachedFunction.invalidate({ example: 'example' })
+await myCachedFunction({ example: "example" })
+await myCachedFunction.invalidate({ example: "example" })
 ```
 
 ## Advanced Features
@@ -204,8 +204,8 @@ A hash of the key/salt is used to encrypt the value and a part of the cache. Cha
 const ttlStore = createTTLStore({ defaultTTL: 60 * Time.Second })
 
 const encryptedStore = createEncryptedStore({
-  key: 'this is secret sauce',
-  salt: 'this is salty',
+  key: "this is secret sauce",
+  salt: "this is salty",
   store: ttlStore,
 })
 
@@ -223,7 +223,7 @@ Although it will work, it is better to setup and export the memozied function ou
 ```ts
 // ok but slower
 export function useExampleFn() {
-  const exampleFn = () => 'example'
+  const exampleFn = () => "example"
   const memoizedFn = createCachedFunction(exampleFn)
 
   return memoizedFn()

@@ -416,7 +416,7 @@ export const { createCachedFunction, cacheQuery } = createCache({
 
 ### Calling the memoized function
 
-Although it will work, it is better to setup and export the memozied function outside of the function that uses it to avoid creating the cache key on every call since we create a hash of the function.toString() to generate a unique cache key.
+Although it will work, it is better to setup and export the memozied function outside of the function that uses it to avoid creating the cache key on every call since we create a hash of the function.toString() to generate a unique cache key. Hashing is normally hardware accelerated and should add less than a few fractions of a ms (less than the encryption numbers in the benchmarks and only when the function is called for the first time).
 
 ```ts
 // ok but slower
@@ -429,6 +429,11 @@ export function useExampleFn() {
 
 // good, especially with many memoized functions
 export const memoizedFn = createCachedFunction(exampleFn)
+
+// good, doesn't require any function hashing
+const memoizedFn = createCachedFunction(exampleFn, {
+  options: { cachePrefix: '/api/todos' },
+})
 ```
 
 ### Fine tuning the cache key
