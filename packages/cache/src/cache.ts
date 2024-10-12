@@ -73,8 +73,8 @@ export const createCache = ({
     const key = hashKey(queryKey)
 
     const localOptions = {
-      ttl: options?.ttl ?? defaultTTL ?? DEFAULT_TTL,
-      fresh: options?.fresh ?? defaultFresh ?? DEFAULT_FRESH,
+      ttl: options?.ttl ?? defaultTTL,
+      fresh: options?.fresh ?? defaultFresh,
       ...options,
     }
 
