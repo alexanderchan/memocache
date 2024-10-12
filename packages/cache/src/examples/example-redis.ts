@@ -72,7 +72,7 @@ async function main() {
     }, 2000 * Time.Millisecond),
   )
 
-  await localContext.wait()
+  await localContext.flushCache()
   await dispose()
 }
 

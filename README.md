@@ -227,6 +227,8 @@ const redisRestStore = createUpstashRedisStore({
 
 For serverless functions, the context object can be used to manage asynchronous operations. The context object has a `waitUntil` method that can be used to enqueue asynchronous tasks to be performed during the lifecycle of the request.
 
+The job of the context is to wait on any asynchronous operations that need to be completed before the function can return so it is left up to the implementer to decide what to do with the context. The context will be provided with promise(s) that need to be completed.
+
 As described in the Vercel documentation:
 
 > The waitUntil() method enqueues an asynchronous task to be performed during the lifecycle of the request. You can use it for anything that can be done after the response is sent, such as logging, sending analytics, or updating a cache, without blocking the response from being sent. waitUntil() is available in the Node.js and Edge Runtime. Promises passed to waitUntil() will have the same timeout as the function itself. If the function times out, the promises will be cancelled.
