@@ -20,7 +20,11 @@ const encryptedRedisStore = createEncryptedStore({
   salt: 'my-salt',
 })
 
-class LocalContext implements Context {
+//**----------------------------------------------------
+/* This is a simple context and only for serverless environments
+/* where the list of waitables won't grow indefinitely
+/*--------------------------------------------------**/
+class SimpleContext implements Context {
   public waitables: Promise<unknown>[] = []
 
   constructor() {}
@@ -29,12 +33,17 @@ class LocalContext implements Context {
     this.waitables.push(p)
   }
 
-  async wait() {
-    await Promise.all(this.waitables)
+  async flushCache() {
+    await Promise.allSettled(this.waitables)
+    this.waitables = []
+  }
+
+  [Symbol.asyncDispose]() {
+    return this.flushCache()
   }
 }
 
-const localContext = new LocalContext()
+const localContext = new SimpleContext()
 
 export const { createCachedFunction, cacheQuery, dispose } = createCache({
   stores: [encryptedRedisStore],

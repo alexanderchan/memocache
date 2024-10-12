@@ -97,7 +97,8 @@ Creates an in-memory TTL store based on `@isaacs/ttl-cache`.
 
 ```typescript
 const store = createTTLStore({
-  defaultTTL: 5 * Time.Minute,
+  defaultFresh: 30 * Time.Second,
+  defaultTTL: 1 * Time.Minute,
 })
 ```
 

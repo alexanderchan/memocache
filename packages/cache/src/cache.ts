@@ -37,8 +37,8 @@ interface CacheOptions {
   defaultOptons?: CacheQueryOptions
 }
 
-const DEFAULT_FRESH = 10 * Time.Minute
-const DEFAULT_TTL = 5 * Time.Minute
+const DEFAULT_FRESH = 30 * Time.Second // when data is fresh we don't revalidate
+const DEFAULT_TTL = 5 * Time.Minute // how long to keep data in cache
 
 export const createCache = ({
   stores,

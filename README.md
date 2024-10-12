@@ -52,6 +52,7 @@ import { createTTLStore } from '@alexmchan/memocache/stores'
 import { Time } from '@alexmchan/memocache/time'
 
 const store = createTTLStore({
+  defaultFresh: 30 * Time.Second,
   defaultTTL: 5 * Time.Minute,
 })
 
@@ -73,6 +74,12 @@ console.log(await cachedFunction('example'))
 
 ## How it works
 
+1. Data is read from the stores, if it is not found we call the function to get the data.
+
+2. If the data exists in the store, we check if it is stale we return the value in the store and then call the function to get the fresh data.
+
+3. If the data is past it's time to live it will be expired from the store
+
 ![An illustration of planets and stars featuring the word “astro”](https://raw.githubusercontent.com/alexanderchan/memocache/refs/heads/main/docs/src/assets/overview-diagram.svg)
 
 <!--
@@ -92,9 +99,46 @@ Creates a new cache instance.
 
 Returns an object with the following methods:
 
-- `cacheQuery<T>({ queryFn, queryKey, options })`: Executes a cache query
 - `createCachedFunction<T>(fn, options)`: Creates a memoized version of a function
+- `cacheQuery<T>({ queryFn, queryKey, options })`: Executes a cache query
 - `dispose()`: Disposes of the cache and its stores
+
+### `createCachedFunction(fn, options)`
+
+Creates a memoized version of a function.
+
+- `fn`: The function to memoize
+- `options`: Options for the memoized function
+- `options.ttl`: Time-To-Live for cache entries in ms
+- `options.fresh`: Revalidate stale data after this time in ms
+
+## Invalidating a Cache Entry
+
+To invalidate a cache entry, there's a `.invalidate()` method on the memoized function that can be called with the same signature as the original function.
+
+```typescript
+const { createCachedFunction } = createCache({
+  stores: [sqliteStore],
+})
+
+const myCachedFunction = createCachedFunction(async ({ example }) => {
+  return `Result for ${example}`
+})
+
+await myCachedFunction({ example: 'example' })
+await myCachedFunction.invalidate({ example: 'example' })
+```
+
+### `Time` Constants
+
+Constants for time units in milliseconds.
+
+- `Time.Millisecond`
+- `Time.Second`
+- `Time.Minute`
+- `Time.Hour`
+
+Usage `5 * Time.Minute` or `10 * Time.Second`, mirrors [`go's duration`](https://github.com/golang/go/blob/b521ebb55a9b26c8824b219376c7f91f7cda6ec2/src/time/time.go#L930).
 
 ### TTL Store
 
@@ -110,7 +154,7 @@ const store = createTTLStore({
 
 ### SQLite Store
 
-Creates a libSql SQLite store.
+Creates a [libSql](https://www.npmjs.com/package/@libsql/client) SQLite store.
 
 - `options.sqliteClient`: An instance of `@libsql/client`
 - `options.defaultTTL`: Default Time-To-Live for cache entries
@@ -142,6 +186,8 @@ const cache = createCache({
 
 ### Redis Store
 
+An [ioredis](https://github.com/redis/ioredis) based store
+
 ```typescript
 import { Redis } from 'ioredis'
 
@@ -156,6 +202,8 @@ const redisStore = createRedisStore({
 
 ## Upstash Redis Store
 
+An [Upstash](https://github.com/upstash/redis-js) Redis store
+
 ```typescript
 import { Redis } from '@upstash/redis'
 const redisRestStore = createUpstashRedisStore({
@@ -167,28 +215,90 @@ const redisRestStore = createUpstashRedisStore({
 })
 ```
 
-## Invalidating a Cache Entry
-
-To invalidate a cache entry, there's a `.invalidate()` method on the memoized function that can be called with the same signature as the original function.
-
-```typescript
-const { createCachedFunction } = createCache({
-  stores: [sqliteStore],
-})
-
-const myCachedFunction = createCachedFunction(async ({ example }) => {
-  return `Result for ${example}`
-})
-
-await myCachedFunction({ example: 'example' })
-await myCachedFunction.invalidate({ example: 'example' })
-```
-
 ## Advanced Features
 
 - **Automatic Revalidation**: The cache automatically revalidates stale data in the background, ensuring fresh data is available for subsequent requests.
 - **Function Memoization**: Easily create cached versions of functions with automatic cache key generation based on function signature and arguments.
 - **Flexible Storage**: Support for different storage backends allows for easy adaptation to various use cases and environments.
+
+### Serverless Context
+
+### Context
+
+For serverless functions, the context object can be used to manage asynchronous operations. The context object has a `waitUntil` method that can be used to enqueue asynchronous tasks to be performed during the lifecycle of the request.
+
+As described in the Vercel documentation:
+
+> The waitUntil() method enqueues an asynchronous task to be performed during the lifecycle of the request. You can use it for anything that can be done after the response is sent, such as logging, sending analytics, or updating a cache, without blocking the response from being sent. waitUntil() is available in the Node.js and Edge Runtime. Promises passed to waitUntil() will have the same timeout as the function itself. If the function times out, the promises will be cancelled.
+
+> To use waitUntil() in your function, import the waitUntil() method from @vercel/functions package. For more information, see the @vercel/functions reference.
+
+```ts
+export interface Context {
+  waitUntil: (p: Promise<unknown>) => void
+}
+
+import { Context } from './context'
+import { waitUntil } from '@vercel/functions'
+
+class VercelFunctionsContext implements Context {
+  waitUntil(p: Promise<unknown>) {
+    waitUntil(p)
+  }
+}
+
+createCache({
+  context: new VercelFunctionsContext(),
+  // ...
+})
+```
+
+Vendor specific documentation:
+
+- [Vercel Serverless](https://vercel.com/docs/functions/functions-api-reference#waituntil)
+- [Vercel Edge and Middleware](https://vercel.com/docs/functions/edge-middleware/middleware-api#waituntil)
+- [Cloudflare Workers](https://developers.cloudflare.com/workers/runtime-apis/context/)
+- [AWS response streaming](https://aws.amazon.com/blogs/compute/introducing-aws-lambda-response-streaming/)
+- [AWS Lambda event loops](https://dev.to/dvddpl/event-loops-and-idle-connections-why-is-my-lambda-not-returning-and-then-timing-out-2oo7)
+
+To be tested implementation of a cache flushing waitable context:
+
+```ts
+//**----------------------------------------------------
+/* This is a simple context and only for serverless environments
+/* where the list of waitables won't grow indefinitely
+/*--------------------------------------------------**/
+class SimpleContext implements Context {
+  public waitables: Promise<unknown>[] = []
+
+  constructor() {}
+
+  waitUntil(p: Promise<unknown>) {
+    this.waitables.push(p)
+  }
+
+  async flushCache() {
+    await Promise.allSettled(this.waitables)
+    this.waitables = []
+  }
+
+  [Symbol.asyncDispose]() {
+    return this.flushCache()
+  }
+}
+
+async function handler(event, context) {
+  using simpleContext = new SimpleContext()
+  using cache = createCache({
+    stores: [store],
+    context: simpleContext,
+  })
+  // do work, ideally return using streaming response otherwise the user response will wait on the flushCache
+
+  // without `using` we have to wait for all promises to finish
+  await simpleContext.flushCache()
+}
+```
 
 ## Concepts
 
