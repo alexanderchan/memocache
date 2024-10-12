@@ -1,6 +1,6 @@
-import { CacheStore } from "../cache"
-import { Time } from "@/time"
-import { Redis } from "@upstash/redis"
+import { CacheStore } from '../cache'
+import { Time } from '@/time'
+import { Redis } from '@upstash/redis'
 
 export const createUpstashRedisStore = ({
   redisClient: redisClientProp,
@@ -19,13 +19,13 @@ export const createUpstashRedisStore = ({
 
   redisClient
     .ping()
-    .then(() => console.log("Connected to Upstash Redis"))
+    .then(() => console.log('Connected to Upstash Redis'))
     .catch((err) => {
-      console.error("Failed to connect to Upstash Redis:", err)
+      console.error('Failed to connect to Upstash Redis:', err)
     })
 
   return {
-    name: "upstash-redis",
+    name: 'upstash-redis',
     async set(key, value, ttl = defaultTTL) {
       await redisClient.set(key, value, { px: ttl })
     },

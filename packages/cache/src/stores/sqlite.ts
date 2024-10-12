@@ -1,7 +1,7 @@
-import { createClient, Client as SqliteClient, Config } from "@libsql/client"
-import { CacheStore } from "@/cache"
-import { Time } from "@/time"
-import superjson from "superjson"
+import { createClient, Client as SqliteClient, Config } from '@libsql/client'
+import { CacheStore } from '@/cache'
+import { Time } from '@/time'
+import superjson from 'superjson'
 
 export interface SqliteStoreConfig {
   /** libSql SQLite client configuration
@@ -26,7 +26,7 @@ interface SqliteStore extends CacheStore {
  */
 export function createSqliteStore({
   sqliteClient: sqliteClientProp,
-  tableName = "cache",
+  tableName = 'cache',
   defaultTTL = 5 * Time.Minute,
   cleanupInterval = 5 * Time.Minute,
 }: SqliteStoreConfig = {}): SqliteStore {
@@ -36,7 +36,7 @@ export function createSqliteStore({
   let sqliteClient =
     sqliteClientProp ||
     createClient({
-      url: "file::memory:",
+      url: 'file::memory:',
     })
 
   const initDb = async () => {
@@ -49,7 +49,7 @@ export function createSqliteStore({
             )
           `)
     } catch (error) {
-      console.error("Failed to initialize SQLite store:", error)
+      console.error('Failed to initialize SQLite store:', error)
     }
 
     try {
@@ -57,7 +57,7 @@ export function createSqliteStore({
             CREATE INDEX IF NOT EXISTS idx_${tableName}_expires ON ${tableName}(expires)
           `)
     } catch (error) {
-      console.error("Failed to create index on SQLite store:", error)
+      console.error('Failed to create index on SQLite store:', error)
     }
   }
 
@@ -84,7 +84,7 @@ export function createSqliteStore({
   }
 
   const store: SqliteStore = {
-    name: "sqlite",
+    name: 'sqlite',
     async set(key: string, value: any, ttl?: number): Promise<void> {
       await lazyInit()
       const _ttl = ttl ?? defaultTTL

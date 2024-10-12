@@ -1,14 +1,14 @@
-import { createCache } from "@/cache"
-import { Context } from "@/context"
-import { createEncryptedStore } from "@/middleware/encryption"
-import { Redis } from "ioredis"
+import { createCache } from '@/cache'
+import { Context } from '@/context'
+import { createEncryptedStore } from '@/middleware/encryption'
+import { Redis } from 'ioredis'
 
-import { createRedisStore } from "@/stores"
-import { Time } from "@/time"
+import { createRedisStore } from '@/stores'
+import { Time } from '@/time'
 
 const redisStore = createRedisStore({
   redisClient: new Redis({
-    host: "localhost",
+    host: 'localhost',
     port: 6379,
   }),
   defaultTTL: 5 * Time.Minute,
@@ -16,8 +16,8 @@ const redisStore = createRedisStore({
 
 const encryptedRedisStore = createEncryptedStore({
   store: redisStore,
-  key: "my-secret",
-  salt: "my-salt",
+  key: 'my-secret',
+  salt: 'my-salt',
 })
 
 //**----------------------------------------------------
@@ -60,14 +60,14 @@ function hello({ message }: { message: string }) {
 const cachedHello = createCachedFunction(hello)
 
 async function main() {
-  await cachedHello.invalidate({ message: "world" })
+  await cachedHello.invalidate({ message: 'world' })
 
-  console.log(await cachedHello({ message: "world" }))
-  console.log(await cachedHello({ message: "world" }))
+  console.log(await cachedHello({ message: 'world' }))
+  console.log(await cachedHello({ message: 'world' }))
 
   await new Promise((resolve) =>
     setTimeout(async () => {
-      console.log(await cachedHello({ message: "world" }))
+      console.log(await cachedHello({ message: 'world' }))
       resolve(null)
     }, 2000 * Time.Millisecond),
   )

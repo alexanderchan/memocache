@@ -1,16 +1,16 @@
-import { createEncryptedStore } from "@/middleware/encryption"
-import { createRedisStore, createTTLStore } from "@/stores"
-import { Time } from "@/time"
-import { performance } from "perf_hooks"
-import { Redis } from "ioredis"
-import { createSqliteStore } from "@/stores/sqlite"
-import { createUpstashRedisStore } from "@/stores/upstash-redis"
-import { createClient } from "@libsql/client"
+import { createEncryptedStore } from '@/middleware/encryption'
+import { createRedisStore, createTTLStore } from '@/stores'
+import { Time } from '@/time'
+import { performance } from 'perf_hooks'
+import { Redis } from 'ioredis'
+import { createSqliteStore } from '@/stores/sqlite'
+import { createUpstashRedisStore } from '@/stores/upstash-redis'
+import { createClient } from '@libsql/client'
 
 // Function to run the benchmark
 async function runBenchmark(store: any, iterations: number) {
-  const key = "testKey"
-  const value = "abcdefghijklmnopqrstuv"
+  const key = 'testKey'
+  const value = 'abcdefghijklmnopqrstuv'
 
   const results: number[] = []
 
@@ -30,21 +30,21 @@ async function benchmark() {
   // Create memoized store
   await using memoizedStore = createEncryptedStore({
     store: createTTLStore({ defaultTTL: 60 * Time.Minute }),
-    key: "testEncryptionKey",
-    salt: "testSalt",
+    key: 'testEncryptionKey',
+    salt: 'testSalt',
     shouldUseMemoize: true,
   })
 
   // Create non-memoized store
   await using nonMemoizedStore = createEncryptedStore({
     store: createTTLStore({ defaultTTL: 60 * Time.Minute }),
-    key: "testEncryptionKey",
-    salt: "testSalt",
+    key: 'testEncryptionKey',
+    salt: 'testSalt',
     shouldUseMemoize: false,
   })
 
   await using redisStore = createRedisStore({
-    redisClient: new Redis({ host: "localhost", port: 6379 }),
+    redisClient: new Redis({ host: 'localhost', port: 6379 }),
     defaultTTL: 5 * Time.Minute,
   })
 
@@ -58,7 +58,7 @@ async function benchmark() {
 
   await using sqliteDiskStore = createSqliteStore({
     sqliteClient: createClient({
-      url: "file:./ignore-test.db",
+      url: 'file:./ignore-test.db',
       concurrency: 2,
     }),
     defaultTTL: 5 * Time.Minute,
@@ -66,27 +66,27 @@ async function benchmark() {
 
   const stores = [
     {
-      name: "TTL store",
+      name: 'TTL store',
       store: ttlStore,
     },
     {
-      name: "SQLite memory store",
+      name: 'SQLite memory store',
       store: sqliteStore,
     },
     {
-      name: "SQLite disk store",
+      name: 'SQLite disk store',
       store: sqliteDiskStore,
     },
     {
-      name: "Redis store",
+      name: 'Redis store',
       store: redisStore,
     },
     {
-      name: "Memoized encrypted TTL store",
+      name: 'Memoized encrypted TTL store',
       store: memoizedStore,
     },
     {
-      name: "Non-memoized encrypted TTL store",
+      name: 'Non-memoized encrypted TTL store',
       store: nonMemoizedStore,
     },
   ]
@@ -97,7 +97,7 @@ async function benchmark() {
     })
 
     stores.push({
-      name: "Redis REST store",
+      name: 'Redis REST store',
       store: redisRestStore,
     })
   }

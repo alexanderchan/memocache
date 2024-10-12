@@ -1,7 +1,7 @@
-import { createCache } from "@/cache"
-import { createTTLStore } from "@/stores"
-import { createSqliteStore } from "@/stores/sqlite"
-import { Time } from "@/time"
+import { createCache } from '@/cache'
+import { createTTLStore } from '@/stores'
+import { createSqliteStore } from '@/stores/sqlite'
+import { Time } from '@/time'
 
 let count = 0
 function hello({ message }: { message: string }) {
@@ -23,14 +23,14 @@ async function main() {
 
   const cachedHello = createCachedFunction(hello)
 
-  await cachedHello.invalidate({ message: "world" })
+  await cachedHello.invalidate({ message: 'world' })
 
-  console.log(await cachedHello({ message: "world" }))
-  console.log(await cachedHello({ message: "world" }))
+  console.log(await cachedHello({ message: 'world' }))
+  console.log(await cachedHello({ message: 'world' }))
 
   await new Promise((resolve) =>
     setTimeout(async () => {
-      console.log(await cachedHello({ message: "world" }))
+      console.log(await cachedHello({ message: 'world' }))
       resolve(null)
     }, 600 * Time.Millisecond),
   )

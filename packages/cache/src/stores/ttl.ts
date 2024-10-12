@@ -1,5 +1,5 @@
-import { CacheStore } from "@/cache"
-import TTLCache from "@isaacs/ttlcache"
+import { CacheStore } from '@/cache'
+import TTLCache from '@isaacs/ttlcache'
 
 export function createTTLStore({
   ttlCache: ttlCacheProp,
@@ -16,7 +16,7 @@ export function createTTLStore({
     })
 
   return {
-    name: "ttl",
+    name: 'ttl',
     async set(key, value, ttl = defaultTTL) {
       ttlCache.set(key, value, { ttl })
     },
@@ -28,8 +28,8 @@ export function createTTLStore({
     },
 
     async entries() {
-      if (process.env.NODE_ENV === "production") {
-        throw new Error("For debugging, not allowed in production")
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('For debugging, not allowed in production')
       }
 
       return [...ttlCache.entries()]

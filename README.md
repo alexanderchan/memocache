@@ -156,7 +156,8 @@ With this method it's easy to wrap a function and have it read/write from multip
 Creates a new cache instance.
 
 - `options.stores`: An array of `CacheStore` instances
-- `options.defaultOptons`: Default options for cache queries
+- `options.defaultTTL`: Default Time-To-Live for cache entries
+- `options.defaultFresh`: Revalidate stale data after this time
 - `options.context`: (Optional) A custom context for managing async operations
 
 Returns an object with the following methods:
@@ -237,13 +238,14 @@ const sqliteClient = createClient({
 
 const sqliteStore = createSqliteStore({
   sqliteClient,
-  defaultTTL: 5 * Time.Minute,
-  cleanupInterval: 5 * Time.Minute,
+  cleanupIntervalp: 5 * Time.Minute,
+  defaultTTL: 10 * Time.Minute,
 })
 
 const cache = createCache({
   stores: [sqliteStore],
-  defaultOptons: { ttl: 10 * Time.Millisecond, fresh: 5 * Time.Millisecond },
+  defaultFresh: 1 * Time.Minute,
+  defaultTTL: 5 * Time.Minute,
 })
 
 // Use cache as in the previous example
