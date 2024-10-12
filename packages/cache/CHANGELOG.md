@@ -1,5 +1,11 @@
 # @alexmchan/memocache
 
+## 0.1.4
+
+### Patch Changes
+
+- f8df7aa: fix up repo location
+
 ## 0.1.3
 
 ### Patch Changes
