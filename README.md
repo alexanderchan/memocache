@@ -216,9 +216,7 @@ const store = createTTLStore({
 })
 ```
 
-### `createSqliteStore(options)`
-
-### SQLite Store
+### SQLite Store `createSqliteStore(options)`
 
 Creates a [libSql](https://www.npmjs.com/package/@libsql/client) SQLite store.
 
@@ -251,7 +249,7 @@ const cache = createCache({
 // Use cache as in the previous example
 ```
 
-### Redis Store
+### Redis Store `createRedisStore`
 
 An [ioredis](https://github.com/redis/ioredis) based store
 
@@ -267,9 +265,9 @@ const redisStore = createRedisStore({
 })
 ```
 
-## Upstash Redis Store
+## Upstash/Vercel KV Redis Store `createUpstashRedisStore`
 
-An [Upstash](https://github.com/upstash/redis-js) Redis store
+An [Upstash](https://github.com/upstash/redis-js) Redis store (also [`@vercel/kv`](https://github.com/vercel/storage/blob/main/packages/kv/src/index.ts) since it's a proxy of Upstash).
 
 ```typescript
 import { Redis } from '@upstash/redis'
@@ -283,12 +281,6 @@ const redisRestStore = createUpstashRedisStore({
 ```
 
 ## Advanced Features
-
-- **Automatic Revalidation**: The cache automatically revalidates stale data in the background, ensuring fresh data is available for subsequent requests.
-- **Function Memoization**: Easily create cached versions of functions with automatic cache key generation based on function signature and arguments.
-- **Flexible Storage**: Support for different storage backends allows for easy adaptation to various use cases and environments.
-
-### Serverless Context
 
 ### Context
 
@@ -506,8 +498,6 @@ async function main() {
 This was inspired by the apis and code [@unkey/cache](https://www.npmjs.com/package/@unkey/cache) and [react-query](https://tanstack.com/query).
 
 The primary difference to `@unkey/cache` is that this package is more focused on providing an even more simple api so that each function that is called doesn't need to generate it's own store itself and to allow per function based cache invalidation and configuration of stale and expiry times.
-
-Perhaps, the `createCachedFunction` and `cacheQuery` apis could be built around a generic `@unkey/cache` and may be an update for a future implementation.
 
 ## Benchmarks
 
