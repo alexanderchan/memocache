@@ -1,4 +1,6 @@
  packages:
+  - "config/*"
   - "packages/*"
   - "apps/*"
   - "docs/"
+
