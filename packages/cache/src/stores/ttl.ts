@@ -1,24 +1,25 @@
 import TTLCache from '@isaacs/ttlcache'
 
 import { CacheStore } from '@/cache'
+import { getTimeInMs } from '@/time'
 
 export function createTTLStore({
   ttlCache: ttlCacheProp,
   defaultTTL,
 }: {
   ttlCache?: TTLCache<any, any>
-  defaultTTL?: number
+  defaultTTL?: number | string
 }): CacheStore & { entries: () => Promise<[string, any][]> } {
   const ttlCache =
     ttlCacheProp ||
     new TTLCache({
       max: 3_000_000, // default is infinity but we scale it back a bit
-      ttl: defaultTTL,
+      ttl: getTimeInMs(defaultTTL),
     })
 
   return {
     name: 'ttl',
-    async set(key, value, ttl = defaultTTL) {
+    async set(key, value, ttl) {
       ttlCache.set(key, value, { ttl })
     },
     async get(key) {

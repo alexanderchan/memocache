@@ -1,9 +1,9 @@
-import { Client as SqliteClient,createClient } from '@libsql/client'
+import { Client as SqliteClient, createClient } from '@libsql/client'
 import superjson from 'superjson'
 
 import { CacheStore } from '@/cache'
 import { defaultLogger, Logger } from '@/logger'
-import { Time } from '@/time'
+import { getTimeInMs, Time } from '@/time'
 
 export interface SqliteStoreConfig {
   /** libSql SQLite client configuration
@@ -15,7 +15,7 @@ export interface SqliteStoreConfig {
   /** Cleanup interval */
   cleanupInterval?: number
   /** Default time-to-live for cache entries */
-  defaultTTL?: number
+  defaultTTL?: number | string
   logger?: Logger
 }
 
@@ -91,7 +91,7 @@ export function createSqliteStore({
     name: 'sqlite',
     async set(key: string, value: any, ttl?: number): Promise<void> {
       await lazyInit()
-      const _ttl = ttl ?? defaultTTL
+      const _ttl = getTimeInMs(ttl ?? defaultTTL)
       const expires = Date.now() + _ttl
 
       await sqliteClient.execute({

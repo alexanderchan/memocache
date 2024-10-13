@@ -4,7 +4,7 @@ import { defaultLogger, Logger } from '@/logger'
 
 import { CacheError } from './error/cache-error'
 import { hashKey, QueryKey } from './hash-key'
-import { Time } from './time'
+import { getTimeInMs, Time } from './time'
 
 export interface CacheStore extends AsyncDisposable {
   /** a name for metrics */
@@ -28,8 +28,8 @@ interface CacheQueryOptions {
 interface CacheOptions {
   stores: CacheStore[]
   context?: Context
-  defaultTTL?: number
-  defaultFresh?: number
+  defaultTTL?: number | string
+  defaultFresh?: number | string
   logger?: Logger
 }
 
@@ -60,8 +60,8 @@ export const createCache = ({
     const key = hashKey(queryKey)
 
     const localOptions = {
-      ttl: options?.ttl ?? defaultTTL,
-      fresh: options?.fresh ?? defaultFresh,
+      ttl: getTimeInMs(options?.ttl ?? defaultTTL),
+      fresh: getTimeInMs(options?.fresh ?? defaultFresh),
       ...options,
     }
 
@@ -84,7 +84,11 @@ export const createCache = ({
 
     // If stale, return from cache and revalidate in the background
     if (result) {
-      revalidateInBackground({ queryFn, queryKey: key, ttl: localOptions?.ttl })
+      revalidateInBackground({
+        queryFn,
+        queryKey: key,
+        ttl: getTimeInMs(localOptions?.ttl),
+      })
       return result.value // Return stale data
     }
 
@@ -94,7 +98,11 @@ export const createCache = ({
 
     const writeToStoresPromise = Promise.allSettled(
       stores.map((store) =>
-        store.set(key, { value: newData, age: Date.now() }, localOptions?.ttl),
+        store.set(
+          key,
+          { value: newData, age: Date.now() },
+          getTimeInMs(localOptions?.ttl),
+        ),
       ),
     )
 
@@ -111,7 +119,7 @@ export const createCache = ({
   }: {
     queryFn: () => Promise<any>
     queryKey: string
-    ttl?: number
+    ttl?: number | string
   }) => {
     let newData: any
     try {
@@ -121,7 +129,11 @@ export const createCache = ({
       const storesUpdatedResultsPromise = Promise.allSettled(
         stores.map(
           async (store) =>
-            await store.set(queryKey, { value: newData, age: Date.now() }, ttl),
+            await store.set(
+              queryKey,
+              { value: newData, age: Date.now() },
+              getTimeInMs(ttl),
+            ),
         ),
       )
 
