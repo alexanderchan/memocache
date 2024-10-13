@@ -1,9 +1,8 @@
 import { Context, DefaultStatefulContext } from '@/context'
-import { hashString } from '@/hash-string'
+import { hashKey, hashString, QueryKey } from '@/hash'
 import { defaultLogger, Logger } from '@/logger'
 
 import { CacheError } from './error/cache-error'
-import { hashKey, QueryKey } from './hash-key'
 import { Time } from './time'
 
 export interface CacheStore extends AsyncDisposable {

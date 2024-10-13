@@ -9,7 +9,7 @@ import {
 } from 'vitest'
 
 import { CacheStore } from '@/cache'
-import { hashKey } from '@/hash-key'
+import { hashKey } from '@/hash'
 import { createSqliteStore } from '@/stores/sqlite'
 import { Time } from '@/time'
 

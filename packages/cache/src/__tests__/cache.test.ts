@@ -1,7 +1,7 @@
-import { afterEach,beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createCache } from '@/cache'
-import { hashKey } from '@/hash-key'
+import { hashKey } from '@/hash'
 import { createTTLStore } from '@/stores/ttl'
 import { Time } from '@/time'
 
