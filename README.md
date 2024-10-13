@@ -89,26 +89,6 @@ We use the stable stringified hash popularized by react-query to generate the ca
 
 This also supports the stale while revalidate pattern allowing to return stale data while fetching fresh data in the background.
 
-## Motivation
-
-It can be a lot of setup to use a cache. This package provides a simple to use cache that supports stale while revalidation. The typical pattern for caching requires:
-
-- finding a good key to use for the cache
-- checking if the key exists in the cache
-- if the key does not exist, fetching the data and storing it in the cache
-- if the key does exist, returning the data from the cache
-- optionally:
-  - setting a TTL on the cached value
-  - setting a stale while revalidation policy
-  - setting a cache store
-  - setting up encrypted caches
-
-One may also want to write back to multiple stores such as an in memory TTL Cache, a local sqlite instance, or Redis. This package provides a simple to use API that supports all of these features.
-
-We use the stable stringified hash popularized by react-query to generate the cache key. This allows for easy generation of the cache key based on the function signature and arguments allowing us to easily memoize functions.
-
-This also supports the stale while revalidate pattern allowing to return stale data while fetching fresh data in the background.
-
 ```ts
 // with memocache
 const { createCachedFunction } = createCache({
