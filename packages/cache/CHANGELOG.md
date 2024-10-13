@@ -1,5 +1,11 @@
 # @alexmchan/memocache
 
+## 0.2.1
+
+### Patch Changes
+
+- 8676381: tidies up api and exports more
+
 ## 0.2.0
 
 ### Minor Changes
