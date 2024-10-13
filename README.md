@@ -186,6 +186,14 @@ Constants for time units in milliseconds.
 
 Usage `5 * Time.Minute` or `10 * Time.Second`, mirrors [`go's Time durations`](https://github.com/golang/go/blob/b521ebb55a9b26c8824b219376c7f91f7cda6ec2/src/time/time.go#L930).
 
+Or choose any time library for `millisecond` durations
+
+```typescript
+import { Duration } from 'effect'
+
+const defaultTTL = Duration.decode('10 minutes').value.millis
+```
+
 ### TTL Store
 
 Creates an in-memory TTL store based on `@isaacs/ttl-cache`.
