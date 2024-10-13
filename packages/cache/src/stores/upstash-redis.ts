@@ -1,7 +1,9 @@
-import { defaultLogger, Logger } from '@/logger'
-import { CacheStore } from '../cache'
-import { Time } from '@/time'
 import { Redis } from '@upstash/redis'
+
+import { defaultLogger, Logger } from '@/logger'
+import { Time } from '@/time'
+
+import { CacheStore } from '../cache'
 
 export const createUpstashRedisStore = ({
   redisClient: redisClientProp,

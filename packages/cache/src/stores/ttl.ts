@@ -1,5 +1,6 @@
-import { CacheStore } from '@/cache'
 import TTLCache from '@isaacs/ttlcache'
+
+import { CacheStore } from '@/cache'
 
 export function createTTLStore({
   ttlCache: ttlCacheProp,

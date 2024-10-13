@@ -1,8 +1,8 @@
+import { Redis } from 'ioredis'
+
 import { createCache } from '@/cache'
 import { Context } from '@/context'
 import { createEncryptedStore } from '@/middleware/encryption'
-import { Redis } from 'ioredis'
-
 import { createRedisStore } from '@/stores'
 import { Time } from '@/time'
 

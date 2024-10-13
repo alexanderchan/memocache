@@ -1,6 +1,7 @@
-import { CacheStore } from '@/cache'
-import superjson from 'superjson'
 import memoizeLast from 'just-memoize-last'
+import superjson from 'superjson'
+
+import { CacheStore } from '@/cache'
 
 // we memozie only the last one because this will be
 // only needed for the use case of store1.set => store2.set

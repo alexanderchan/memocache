@@ -1,11 +1,12 @@
+import { createClient } from '@libsql/client'
+import { Redis } from 'ioredis'
+import { performance } from 'perf_hooks'
+
 import { createEncryptedStore } from '@/middleware/encryption'
 import { createRedisStore, createTTLStore } from '@/stores'
-import { Time } from '@/time'
-import { performance } from 'perf_hooks'
-import { Redis } from 'ioredis'
 import { createSqliteStore } from '@/stores/sqlite'
 import { createUpstashRedisStore } from '@/stores/upstash-redis'
-import { createClient } from '@libsql/client'
+import { Time } from '@/time'
 
 // Function to run the benchmark
 async function runBenchmark(store: any, iterations: number) {

@@ -1,7 +1,9 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
-import { createTTLStore } from '../ttl'
-import { Time } from '@/time'
+import { afterEach,beforeEach, describe, expect, it, vi } from 'vitest'
+
 import { hashKey } from '@/hash-key'
+import { Time } from '@/time'
+
+import { createTTLStore } from '../ttl'
 
 describe('TTL Cache', () => {
   let cache: ReturnType<typeof createTTLStore>

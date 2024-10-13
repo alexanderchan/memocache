@@ -1,8 +1,10 @@
-import { defaultLogger, Logger } from '@/logger'
-import { CacheStore } from '../cache'
-import { Time } from '@/time'
 import { Redis } from 'ioredis'
 import superjson from 'superjson'
+
+import { defaultLogger, Logger } from '@/logger'
+import { Time } from '@/time'
+
+import { CacheStore } from '../cache'
 
 export const createRedisStore = ({
   redisClient: redisClientProp,

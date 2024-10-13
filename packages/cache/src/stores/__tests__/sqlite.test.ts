@@ -1,17 +1,17 @@
 import {
-  describe,
-  it,
-  expect,
-  beforeEach,
-  vi,
-  afterEach,
   afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
 } from 'vitest'
 
-import { Time } from '@/time'
+import { CacheStore } from '@/cache'
 import { hashKey } from '@/hash-key'
 import { createSqliteStore } from '@/stores/sqlite'
-import { CacheStore } from '@/cache'
+import { Time } from '@/time'
 
 describe('TTL Cache', () => {
   let store: CacheStore
