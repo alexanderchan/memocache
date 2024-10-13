@@ -1,12 +1,12 @@
 // https://github.com/unkeyed/unkey/blob/main/packages/error/src/error-handling.ts
 import type { BaseError } from './base-error'
 
-type OkResult<V> = {
+interface OkResult<V> {
   val: V
   err?: never
 }
 
-type ErrResult<E extends BaseError> = {
+interface ErrResult<E extends BaseError> {
   val?: never
   err: E
 }

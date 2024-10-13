@@ -27,7 +27,7 @@ async function main() {
     defaultTTL: 2 * Time.Second,
   })
 
-  const { createCachedFunction, cacheQuery, dispose } = cache
+  const { createCachedFunction } = cache
 
   const cachedHello = createCachedFunction(hello)
 

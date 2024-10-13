@@ -27,8 +27,6 @@ const encryptedRedisStore = createEncryptedStore({
 class SimpleContext implements Context {
   public waitables: Promise<unknown>[] = []
 
-  constructor() {}
-
   waitUntil(p: Promise<unknown>) {
     this.waitables.push(p)
   }

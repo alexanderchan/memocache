@@ -1,6 +1,6 @@
 import { createCache } from '@/cache'
 import { createTTLStore } from '@/stores'
-import { createSqliteStore } from '@/stores/sqlite'
+
 import { Time } from '@/time'
 
 let count = 0
@@ -21,7 +21,7 @@ async function main() {
     defaultTTL: 2 * Time.Second,
   })
 
-  const { createCachedFunction, cacheQuery, dispose } = cache
+  const { createCachedFunction } = cache
 
   const cachedHello = createCachedFunction(hello)
 

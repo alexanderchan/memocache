@@ -19,7 +19,11 @@ export interface CacheStore extends AsyncDisposable {
   dispose?(): Promise<any>
 }
 
-type CacheQueryOptions = { ttl?: number; fresh?: number; cachePrefix?: string }
+interface CacheQueryOptions {
+  ttl?: number
+  fresh?: number
+  cachePrefix?: string
+}
 interface CacheOptions {
   stores: CacheStore[]
   context?: Context
@@ -38,8 +42,9 @@ export const createCache = ({
   logger = defaultLogger,
   context,
 }: CacheOptions) => {
-  let _context = context || new DefaultStatefulContext()
+  const _context = context || new DefaultStatefulContext()
 
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
   async function cacheQuery<T extends Function>({
     queryFn,
     queryKey,
@@ -144,7 +149,7 @@ export const createCache = ({
       // https://vercel.com/docs/functions/edge-middleware/middleware-api#waituntil
       // https://www.unkey.com/docs/libraries/ts/cache/overview
       return storesUpdatedResults
-    } catch (err) {
+    } catch {
       logger.error(
         new CacheError({
           message: 'Failed to revalidate cache',
@@ -186,7 +191,7 @@ export const createCache = ({
       const cachePrefix = await getCachePrefix()
 
       return cacheQuery({
-        queryFn: () => fn.apply(undefined, args),
+        queryFn: () => fn(...args),
         queryKey: [cachePrefix, args],
         options,
       })

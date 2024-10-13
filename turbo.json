@@ -22,9 +22,12 @@
     "format": {
       "dependsOn": ["^format"]
     },
+    "lint": {
+      "dependsOn": []
+    },
     "//#format:root": {},
     "ci": {
-      "dependsOn": ["^ci", "typecheck", "test", "//#format:root"]
+      "dependsOn": ["^ci", "typecheck", "test", "//#format:root", "lint"]
     }
   }
 }

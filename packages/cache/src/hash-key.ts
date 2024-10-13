@@ -3,14 +3,17 @@
  * Hashes the value into a stable hash.
  * https://github.com/TanStack/query/blob/69d37f33bdee50d73d0f05256f243113a857a1ee/packages/query-core/src/utils.ts#L177
  */
-export type QueryKey = ReadonlyArray<unknown>
+export type QueryKey = readonly unknown[]
 
 export function hashKey(queryKey: QueryKey): string {
-  return JSON.stringify(queryKey, (_, val) =>
+  return JSON.stringify(queryKey, (_, val: any) =>
     isPlainObject(val)
       ? Object.keys(val)
           .sort()
-          .reduce((result, key) => {
+          .reduce((result, key: any) => {
+            // came from tanstack/query check for fixes there
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore
             result[key] = val[key]
             return result
           }, {} as any)
@@ -23,7 +26,7 @@ function hasObjectPrototype(o: any): boolean {
 }
 
 // Copied from: https://github.com/jonschlinkert/is-plain-object
-export function isPlainObject(o: any): o is Object {
+export function isPlainObject(o: any): o is object {
   if (!hasObjectPrototype(o)) {
     return false
   }
@@ -41,6 +44,7 @@ export function isPlainObject(o: any): o is Object {
   }
 
   // If constructor does not have an Object-specific method
+  // eslint-disable-next-line no-prototype-builtins
   if (!prot.hasOwnProperty('isPrototypeOf')) {
     return false
   }

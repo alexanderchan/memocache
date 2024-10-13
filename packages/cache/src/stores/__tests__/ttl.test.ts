@@ -43,7 +43,7 @@ describe('TTL Cache', () => {
     await cache.set('key3', 'value3', 3 * Time.Second) // 2 seconds TTL
 
     vi.advanceTimersByTime(1.5 * Time.Second)
-    let result = await cache.get('key3')
+    const result = await cache.get('key3')
     expect(result).toBe('value3')
   })
 

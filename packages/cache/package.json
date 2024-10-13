@@ -20,6 +20,7 @@
     "check-exports": "yarn pack --out ./ignore-package.tgz && yarn attw ./ignore-package.tgz && rm ./ignore-package.tgz",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "lint": "eslint .",
     "test:watch": "vitest --watch"
   },
   "main": "dist/index.js",
@@ -31,10 +32,14 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.16.4",
+    "@eslint/js": "^9.12.0",
+    "@types/eslint__js": "^8.42.3",
     "@types/node": "^22.7.4",
+    "eslint": "^9.12.0",
     "nodemon": "^3.1.7",
     "tsup": "^8.3.0",
     "typescript": "^5.6.2",
+    "typescript-eslint": "^8.8.1",
     "vitest": "^2.1.2"
   }
 }

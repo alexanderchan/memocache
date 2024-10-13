@@ -15,12 +15,9 @@ export const createRedisStore = ({
 } = {}) => {
   const redisClient = redisClientProp || new Redis()
 
-  redisClient
-    .info()
-    .then((info) => {})
-    .catch((err) => {
-      logger.error('Failed to connect to Redis:', err)
-    })
+  redisClient.info().catch((err) => {
+    logger.error('Failed to connect to Redis:', err)
+  })
 
   return {
     name: 'ioredis',

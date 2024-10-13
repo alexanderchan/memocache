@@ -7,7 +7,7 @@ import {
   afterEach,
   afterAll,
 } from 'vitest'
-import { createTTLStore } from '../ttl'
+
 import { Time } from '@/time'
 import { hashKey } from '@/hash-key'
 import { createSqliteStore } from '@/stores/sqlite'
@@ -60,7 +60,7 @@ describe('TTL Cache', () => {
     await store.set('key3', 'value3', 3 * Time.Second) // 2 seconds TTL
 
     vi.advanceTimersByTime(1.5 * Time.Second)
-    let result = await store.get('key3')
+    const result = await store.get('key3')
     expect(result).toBe('value3')
   })
 

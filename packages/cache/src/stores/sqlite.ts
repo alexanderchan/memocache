@@ -1,4 +1,4 @@
-import { createClient, Client as SqliteClient, Config } from '@libsql/client'
+import { createClient, Client as SqliteClient } from '@libsql/client'
 import { CacheStore } from '@/cache'
 import { Time } from '@/time'
 import superjson from 'superjson'
@@ -34,9 +34,9 @@ export function createSqliteStore({
   logger = defaultLogger,
 }: SqliteStoreConfig = {}): SqliteStore {
   let cleanupIntervalId: NodeJS.Timeout
-  let hasInitializedDb: boolean = false
+  let hasInitializedDb = false
 
-  let sqliteClient =
+  const sqliteClient =
     sqliteClientProp ||
     createClient({
       url: 'file::memory:',

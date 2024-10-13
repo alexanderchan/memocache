@@ -11,7 +11,8 @@
     "format:root": "prettier \"**/*.{ts,tsx,md,js,json}\" --check --cache",
     "format:fix": "prettier --write \"**/*.{ts,tsx,md,json}\"",
     "typecheck": "turbo run typecheck",
-    "local-release": "changeset version && changeset publish"
+    "local-release": "changeset version && changeset publish",
+    "lint": "turbo run lint"
   },
   "keywords": [],
   "author": "",

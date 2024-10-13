@@ -39,8 +39,6 @@ describe('Encrypted TTL Cache', () => {
     // note that the iv and cyper text are different every time
     // so we can't compare the value directly
     expect(allValues?.find(([key]) => key === 'key1')).toBeUndefined()
-
-    const entries = await ttlCache.entries?.()
   })
 
   // from here on, we are running the same tests as the TTL store
@@ -66,7 +64,7 @@ describe('Encrypted TTL Cache', () => {
     await cache.set('key3', 'value3', 3 * Time.Second) // 2 seconds TTL
 
     vi.advanceTimersByTime(1.5 * Time.Second)
-    let result = await cache.get('key3')
+    const result = await cache.get('key3')
     expect(result).toBe('value3')
   })
 
