@@ -1,7 +1,7 @@
 {
   "name": "@repo/eslint-config",
   "version": "0.2.0",
-  "private": false,
+  "private": true,
   "dependencies": {
     "@isaacs/ttlcache": "^1.4.1",
     "@libsql/client": "^0.14.0",

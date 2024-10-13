@@ -1,4 +1,4 @@
-import { Client as SqliteClient,createClient } from '@libsql/client'
+import { Client as SqliteClient, createClient } from '@libsql/client'
 import superjson from 'superjson'
 
 import { CacheStore } from '@/cache'
