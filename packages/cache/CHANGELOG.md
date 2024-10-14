@@ -1,5 +1,11 @@
 # @alexmchan/memocache
 
+## 0.2.2
+
+### Patch Changes
+
+- cca1230: test release
+
 ## 0.2.1
 
 ### Patch Changes
