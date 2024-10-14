@@ -22,5 +22,8 @@ which should add
 
 import repoEslintConfig from '@repo/eslint-config'
 
-export default [...repoEslintConfig]
+export default [
+  ...repoEslintConfig,
+  ...reposEslintConfig.configs.react, // for react projects
+]
 ```
