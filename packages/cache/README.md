@@ -355,7 +355,17 @@ async function handler(event, context) {
 
 Stores are the underlying data structure that the cache uses to store the data. The cache uses the store to get, set, and delete data. The store can be anything that implements the `Store` interface and could be an in-memory store, an SQLite store, a Redis store, etc.
 
-## Build your own store
+### Default TTL
+
+The time to live will be taken in the order of:
+
+1. The default TTL of function if defined
+2. The default TTL of the store if defined
+3. The default TTL of the cache if defined
+
+This allows for overriding of the per function TTL, but otherwise we can have different TTLs for the stores so that something that has a larger capacity such as a disk store can have a longer TTL than a memory store.
+
+### Build your own store
 
 The store interface is the following
 
