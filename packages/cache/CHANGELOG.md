@@ -1,5 +1,11 @@
 # @alexmchan/memocache
 
+## 0.2.6
+
+### Patch Changes
+
+- 6f8f0ec: testing release process
+
 ## 0.2.5
 
 ### Patch Changes
