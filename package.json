@@ -27,6 +27,7 @@
   "devDependencies": {
     "@commander-js/extra-typings": "^12.1.0",
     "@inquirer/prompts": "^7.0.0",
+    "@types/node": "^22.7.4",
     "execa": "^9.3.1",
     "tsx": "^4.19.1",
     "turbo": "^2.1.3"
