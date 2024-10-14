@@ -1,16 +1,18 @@
 name: Publish Changeset
 
 on:
-  workflow_run:
-    # workflows: ['CI']
-    types: [requested]
-    branches:
-      - 'main'
+  #   workflow_run:
+  #     # workflows: ['CI']
+  #     types: [requested]
+  #     branches:
+  #       - 'main'
 
   # checking release
   push:
     branches:
       - main
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
   release:
