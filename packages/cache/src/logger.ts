@@ -7,7 +7,9 @@ export interface Logger {
 }
 
 export const defaultLogger = {
+  // eslint-disable-next-line no-console
   debug: console.debug,
+  // eslint-disable-next-line no-console
   log: console.log,
   info: console.info,
   warn: console.warn,
