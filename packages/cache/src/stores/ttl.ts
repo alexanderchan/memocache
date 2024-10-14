@@ -41,8 +41,8 @@ export function createTTLStore({
     async dispose() {
       ttlCache.clear()
     },
-    [Symbol.asyncDispose]: async () => {
-      ttlCache.clear()
+    async [Symbol.asyncDispose]() {
+      this.dispose?.()
     },
   }
 }

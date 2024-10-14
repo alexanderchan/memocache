@@ -144,7 +144,7 @@ export function createSqliteStore({
     },
     cleanup,
     dispose,
-    [Symbol.asyncDispose]: async () => {
+    async [Symbol.asyncDispose]() {
       await dispose()
     },
   }

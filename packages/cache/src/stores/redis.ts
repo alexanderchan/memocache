@@ -37,9 +37,8 @@ export const createRedisStore = ({
       await redisClient.disconnect()
       await redisClient.quit()
     },
-    [Symbol.asyncDispose]: async () => {
-      await redisClient.disconnect()
-      await redisClient.quit()
+    async [Symbol.asyncDispose]() {
+      this.dispose?.()
     },
   } satisfies CacheStore
 }
