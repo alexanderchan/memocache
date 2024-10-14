@@ -1,5 +1,11 @@
 # @alexmchan/memocache
 
+## 0.2.5
+
+### Patch Changes
+
+- d4f32d6: testing auto release
+
 ## 0.2.4
 
 ### Patch Changes
