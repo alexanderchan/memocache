@@ -1,5 +1,11 @@
 # @alexmchan/memocache
 
+## 0.2.4
+
+### Patch Changes
+
+- 9744e73: checking local pr detect and merge
+
 ## 0.2.3
 
 ### Patch Changes
