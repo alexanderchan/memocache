@@ -7,6 +7,11 @@ on:
     branches:
       - 'main'
 
+  # checking release
+  push:
+    branches:
+      - main
+
 jobs:
   release:
     name: Release
