@@ -1,16 +1,16 @@
 name: Publish Changeset
 
 on:
-  #   workflow_run:
-  #     # workflows: ['CI']
-  #     types: [requested]
-  #     branches:
-  #       - 'main'
-
-  # checking release
-  push:
+  workflow_run:
+    # workflows: ['CI']
+    types: [requested]
     branches:
-      - main
+      - 'main'
+
+  # for testing check on a push event
+  # push:
+  #   branches:
+  #     - main
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
@@ -18,11 +18,10 @@ jobs:
   release:
     name: Release
 
+    # See https://github.com/changesets/action/pull/402/files for permissions required
     permissions:
       contents: write # to create release (changesets/action)
       pull-requests: write # to create pull request (changesets/action)
-      id-token: write
-      statuses: write
 
     runs-on: ubuntu-latest
     environment: production
