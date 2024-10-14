@@ -11,6 +11,7 @@
     "format:root": "prettier \"**/*.{ts,tsx,md,js,json}\" --check --cache",
     "format:fix": "prettier --write \"**/*.{ts,tsx,md,json}\"",
     "typecheck": "turbo run typecheck",
+    "release:view": "gh pr list --app github-actions --web",
     "release:pr": "tsx ./scripts/merge-changeset-pr.ts",
     "release:local": "changeset version && changeset publish",
     "release": "pnpm run build && changeset version && changeset publish",

@@ -25,6 +25,29 @@ async function mergePr(prNumber: number) {
   })
 }
 
+async function commentPr(prNumber: number) {
+  await execa(
+    'gh',
+    [
+      'pr',
+      'review',
+      '--comment',
+      '-b',
+      'cli merge changeset pr',
+      prNumber.toString(),
+    ],
+    {
+      stdio: 'inherit',
+    },
+  )
+}
+
+async function approvePr(prNumber: number) {
+  await execa('gh', ['pr', 'review', prNumber.toString(), '--approve'], {
+    stdio: 'inherit',
+  })
+}
+
 program
   .description('CLI to merge the first PR from GitHub Actions')
   .action(async () => {
@@ -43,7 +66,11 @@ program
       })
 
       if (isConfirmed) {
+        await commentPr(pr.number)
+        await approvePr(pr.number)
+
         await mergePr(pr.number)
+
         console.log(`PR #${pr.number} merged successfully!`)
       } else {
         console.log('Merge cancelled.')
