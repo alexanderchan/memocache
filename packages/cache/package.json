@@ -1,6 +1,6 @@
 {
   "name": "@alexmchan/memocache",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": false,
   "dependencies": {
     "@isaacs/ttlcache": "^1.4.1",

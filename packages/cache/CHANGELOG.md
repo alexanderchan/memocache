@@ -1,5 +1,11 @@
 # @alexmchan/memocache
 
+## 0.2.3
+
+### Patch Changes
+
+- 298b567: fix readme reference
+
 ## 0.2.2
 
 ### Patch Changes
