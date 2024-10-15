@@ -26,17 +26,17 @@
   },
   "scripts": {
     "build": "tsup",
-    "check-exports": "yarn pack --out ./ignore-package.tgz && yarn attw ./ignore-package.tgz && rm ./ignore-package.tgz",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "lint": "eslint .",
     "test:watch": "vitest --watch"
   },
-  "main": "dist/index.js",
+  "main": "dist/index.mjs",
+  "types": "dist/index.d.mts",
   "exports": {
     "./package.json": "./package.json",
     ".": {
-      "import": "./dist/index.js"
+      "import": "./dist/index.mjs"
     }
   }
 }
