@@ -1,5 +1,12 @@
 # @alexmchan/memocache
 
+## 0.2.7
+
+### Patch Changes
+
+- 1af5b6d: fix types
+- c31450b: fix types
+
 ## 0.2.6
 
 ### Patch Changes
