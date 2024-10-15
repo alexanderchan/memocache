@@ -50,3 +50,12 @@ jobs:
           publish: pnpm release
           #   commit: true
           #   setupGitUser: true
+
+      # for auto PR and merge instead of action
+      # - name: publish (if there are changesets)
+      #   id: changeset
+      #   run: |
+      #     node ./scripts/publish.mjs
+      #   env:
+      #     NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # requires packages:write permission
+      #     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # admin required to auto merge a pr
