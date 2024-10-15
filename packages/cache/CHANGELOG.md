@@ -1,5 +1,11 @@
 # @alexmchan/memocache
 
+## 0.2.7
+
+### Patch Changes
+
+- c31450b: fix types
+
 ## 0.2.6
 
 ### Patch Changes
