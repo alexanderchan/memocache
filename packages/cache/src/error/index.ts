@@ -1,3 +1,4 @@
+// will probably change this to https://github.com/supermacro/neverthrow
 // https://github.com/unkeyed/unkey/blob/main/packages/error/src/error-handling.ts
 import type { BaseError } from './base-error'
 

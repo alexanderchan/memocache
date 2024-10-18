@@ -1,5 +1,7 @@
+import { CacheStore } from '@alexmchan/memocache-common'
+import { hashKey, Time } from '@alexmchan/memocache-common'
 import { RedisContainer, StartedRedisContainer } from '@testcontainers/redis'
-import Redis from 'ioredis'
+import { Redis } from 'ioredis'
 import {
   afterAll,
   beforeAll,
@@ -10,21 +12,20 @@ import {
   vi,
 } from 'vitest'
 
-import { CacheStore } from '@/cache'
-import { hashKey } from '@/hash'
-import { createRedisStore } from '@/stores/redis'
-import { Time } from '@/time'
+import { createRedisStore } from '../redis.js'
 
 describe('Redis Cache', () => {
   let store: CacheStore
-  let container: StartedRedisContainer
+  let redisContainer: StartedRedisContainer
   let redisClient: Redis
   beforeAll(async () => {
-    container = await new RedisContainer().start()
+    redisContainer = await new RedisContainer(
+      'valkey/valkey:7.2.6-alpine', // https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/supported-engine-versions.html
+    ).start()
 
-    container.getConnectionUrl()
+    redisContainer.getConnectionUrl()
     redisClient = new Redis({
-      port: container.getPort(),
+      port: redisContainer.getPort(),
     })
   })
   beforeEach(() => {
@@ -36,7 +37,7 @@ describe('Redis Cache', () => {
 
   afterAll(async () => {
     await store?.dispose?.()
-    await container.stop()
+    await redisContainer.stop()
   })
 
   it('should set and get a value', async () => {
@@ -46,8 +47,7 @@ describe('Redis Cache', () => {
   })
 
   it('should respect the default TTL', async () => {
-    await store.set('key2', 'value2', 10 * Time.Millisecond)
-
+    await store.set('key2', 'value2', 0.3 * Time.Second)
     let result = await store.get('key2')
     expect(result).toBe('value2')
 
@@ -63,7 +63,7 @@ describe('Redis Cache', () => {
   })
 
   it('should respect custom TTL', async () => {
-    await store.set('key3', 'value3', 3 * Time.Second) // 2 seconds TTL
+    await store.set('key3', 'value3', 10 * Time.Second) // 2 seconds TTL
 
     const result = await store.get('key3')
     expect(result).toBe('value3')

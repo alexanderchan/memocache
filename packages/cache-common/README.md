@@ -12,8 +12,8 @@ This package provides a flexible and extensible caching solution for Node.js app
 - Multiple storage backend support (e.g., in-memory TTL store, Redis, SQLite)
 - Configurable TTL (Time-To-Live) for cache entries
 - Automatic background revalidation of stale data
-- Function memoization with automatic cache key generation `const cachedFunction = createCachedFunction(anyFunction)` with automatic typed arguments and return values
-- Supports middleware for encryption and metrics of cache stores
+- Function memoization with automatic cache key generation `const cachedFunction = createCachedFunction(async () => "I'm cached")`
+- Supports middleware for encryption of cache stores
 
 ## Installation
 
@@ -101,9 +101,9 @@ const cachedFunction = createCachedFunction(async ({ id, name }) => {
   return `Result for ${arg}`
 })
 
-// The old way without memocache to help
+// without, for each function
 
-function doSomething({ id, name }) {
+function doExpensiveOperation({ id, name }) {
   // check the cache
   const key = JSON.stringify({ id, name })
   const cachedValue = cache.get(key)
@@ -112,7 +112,7 @@ function doSomething({ id, name }) {
   }
 
   // some expensive operation or fetch
-  const result = await doSomethingVeryExpensive(`Result for ${id} and ${name}`)
+  const result = `Result for ${id} and ${name}`
 
   // we have to wait here or we need to find a way to signal to the platform for serverless that the
   try {
@@ -151,32 +151,12 @@ Returns an object with the following methods:
 Creates a memoized version of a function.
 
 - `fn`: The function to memoize
-- `options`(optional): `CacheQueryOptions` Options for the memoized function
+- `options`(optional): Options for the memoized function
 - `options.cachePrefix`: A prefix will be auto generated based on the function contents for convenience and will add only fractions of a millisecond, however for very very large functions this might be a concern so one can specify a prefix such as `/api/todos` to scope the function to a known value. Note that any change to the function code will also change the cache key unless this value is set.
 - `options.ttl`: Time-To-Live for cache entries in ms
 - `options.fresh`: Revalidate stale data after this time in ms
 
-> 🟡 Make sure that any identifiers that might be inferred from auth such as customerId are passed in as arguments to the function to ensure that the cache key is unique per user so that one user doesn't see another user's data. Alternatively, specify your own cache keys with cacheQuery.
-
-### `cacheQuery({ queryFn, queryKey, options })`
-
-Executes a cache query with a specific set of keys. This resembles the `useQuery` api. As an added bonus, the react-query [eslint plugin](https://tanstack.com/query/latest/docs/eslint/eslint-plugin-query) will also help validate that external values are included in the querykey.
-
-```ts
-
-function exampleFunction({ storeId, customerId }) {
-
- return cacheQuery({
-    queryKey: ['/items', { storeId, customerId }],
-    queryFn: async fetch() {
-        return fetchItems({ storeId,customerId })
-    },
-  })
-}
-
-```
-
-### Invalidating a Cache Entry
+## Invalidating a Cache Entry
 
 To invalidate a cache entry, there's a `.invalidate()` method on the memoized function that can be called with the same signature as the original function.
 
@@ -193,7 +173,26 @@ await myCachedFunction({ example: 'example' })
 await myCachedFunction.invalidate({ example: 'example' })
 ```
 
-## Stores
+### `Time` Constants
+
+Constants for time units in milliseconds.
+
+- `Time.Millisecond`
+- `Time.Second`
+- `Time.Minute`
+- `Time.Hour`
+- `Time.Day`
+- `Time.Week`
+
+Usage `5 * Time.Minute` or `10 * Time.Second`, mirrors [`go's Time durations`](https://github.com/golang/go/blob/b521ebb55a9b26c8824b219376c7f91f7cda6ec2/src/time/time.go#L930).
+
+Or choose any time library for `millisecond` durations
+
+```typescript
+import { Duration } from 'effect'
+
+const defaultTTL = Duration.decode('10 minutes').value.millis
+```
 
 ### TTL Store
 
@@ -240,14 +239,9 @@ const cache = createCache({
 
 ### Redis Store `createRedisStore`
 
-An [ioredis](https://github.com/redis/ioredis) based store.
-
-```
-pnpm install @alexmchan/memocache-store-redis
-```
+An [ioredis](https://github.com/redis/ioredis) based store
 
 ```typescript
-import { createRedisStore } from '@alexmchan/memocache-store-redis'
 import { Redis } from 'ioredis'
 
 const redisStore = createRedisStore({
@@ -259,12 +253,11 @@ const redisStore = createRedisStore({
 })
 ```
 
-### Upstash Redis Store `createUpstashRedisStore`
+## Upstash/Vercel KV Redis Store `createUpstashRedisStore`
 
 An [Upstash](https://github.com/upstash/redis-js) Redis store (also [`@vercel/kv`](https://github.com/vercel/storage/blob/main/packages/kv/src/index.ts) since it's a proxy of Upstash).
 
 ```typescript
-import { createUpstashRedisStore } from '@alexmchan/memocache-store-redis'
 import { Redis } from '@upstash/redis'
 const redisRestStore = createUpstashRedisStore({
   redisClient: new Redis({
@@ -273,49 +266,6 @@ const redisRestStore = createUpstashRedisStore({
   }),
   defaultTTL: 5 * Time.Minute,
 })
-```
-
-## Middleware
-
-Middleware wraps the store definition and returns a new store that can be used in the cache. Middleware can be used to add additional functionality to the store, such as logging, metrics, or encryption. See the `encryption` middleware for an example of how to use middleware.
-
-### Encrypted middleware
-
-Attach encryption to any store. This middleware encrypts the value before storing it in the store and decrypts it when retrieving it.
-
-A hash of the key/salt is used to encrypt the value and a part of the cache. Changing the key or salt will effectively invalidate the cache values.
-
-```ts
-const ttlStore = createTTLStore({ defaultTTL: 60 * Time.Second })
-
-const encryptedStore = createEncryptedStore({
-  key: 'this is secret sauce',
-  salt: 'this is salty',
-  store: ttlStore,
-})
-
-export const { createCachedFunction, cacheQuery } = createCache({
-  stores: [encryptedStore],
-})
-```
-
-### Metrics
-
-Attach metrics to any store. This middleware logs the time taken to get, set, and delete values from the store.
-
-```ts
-const ttlStore = createTTLStore({ defaultTTL: 60 * Time.Second })
-const metricsSqliteStore = createMetricsStore({
-  store: ttlStore,
-})
-
-// output to the logger
-// Metric {
-//   metric: "cache.read",
-//   key: "[\"hello/80c56980e62840587ea4c2f103f23f08e042bd8cea808025219e4e7d1b7c996d\",[{\"message\":\"world\"}]]",
-//   hit: true,
-//   latency: 1,
-// }
 ```
 
 ## Advanced Features
@@ -336,19 +286,18 @@ As described in the Vercel documentation:
 export interface Context {
   waitUntil: (p: Promise<unknown>) => void
 }
-```
 
-```ts
 import { Context } from './context'
 import { waitUntil } from '@vercel/functions'
 
+class VercelFunctionsContext implements Context {
+  waitUntil(p: Promise<unknown>) {
+    waitUntil(p)
+  }
+}
+
 createCache({
-  context: {
-    waitUntil,
-    [Symbol.asyncDispose]() {
-      // cleanup
-    },
-  },
+  context: new VercelFunctionsContext(),
   // ...
 })
 ```
@@ -368,30 +317,23 @@ To be tested implementation of a cache flushing waitable context:
 /* This is a simple context and only for serverless environments
 /* where the list of waitables won't grow indefinitely
 /*--------------------------------------------------**/
+class SimpleContext implements Context {
+  public waitables: Promise<unknown>[] = []
 
-function createSimpleContext() {
-  waitables: Promise<unknown>[] = []
-  const context = {
-    waitables,
-    waitUntil(p) {
-      waitables.push(p);
+  constructor() {}
 
-      if (waitables.length > 1000) {
-        this.flushCache();
-      }
-    },
+  waitUntil(p: Promise<unknown>) {
+    this.waitables.push(p)
+  }
 
-    async flushCache() {
-      await Promise.allSettled(waitables);
-      waitables.length = 0;
-    },
+  async flushCache() {
+    await Promise.allSettled(this.waitables)
+    this.waitables = []
+  }
 
-    [Symbol.asyncDispose]() {
-      return this.flushCache();
-    }
-  };
-
-  return context;
+  [Symbol.asyncDispose]() {
+    return this.flushCache()
+  }
 }
 
 async function handler(event, context) {
@@ -423,27 +365,6 @@ The time to live will be taken in the order of:
 
 This allows for overriding of the per function TTL, but otherwise we can have different TTLs for the stores so that something that has a larger capacity such as a disk store can have a longer TTL than a memory store.
 
-### `Time` Constants
-
-Constants for time units in milliseconds.
-
-- `Time.Millisecond`
-- `Time.Second`
-- `Time.Minute`
-- `Time.Hour`
-- `Time.Day`
-- `Time.Week`
-
-Usage `5 * Time.Minute` or `10 * Time.Second`, mirrors [`go's Time durations`](https://github.com/golang/go/blob/b521ebb55a9b26c8824b219376c7f91f7cda6ec2/src/time/time.go#L930).
-
-Or choose any time library for `millisecond` durations
-
-```typescript
-import { Duration } from 'effect'
-
-const defaultTTL = Duration.decode('10 minutes').value.millis
-```
-
 ### Build your own store
 
 The store interface is the following
@@ -460,6 +381,30 @@ export interface CacheStore extends AsyncDisposable {
   /** dispose of any resources or connections when the cache is no longer in use */
   dispose?(): Promise<any>
 }
+```
+
+### Middleware
+
+Middleware wraps the store definition and returns a new store that can be used in the cache. Middleware can be used to add additional functionality to the store, such as logging, metrics, or encryption. See the `encryption` middleware for an example of how to use middleware.
+
+### Encrypted middleware
+
+Attach encryption to any store. This middleware encrypts the value before storing it in the store and decrypts it when retrieving it.
+
+A hash of the key/salt is used to encrypt the value and a part of the cache. Changing the key or salt will effectively invalidate the cache values.
+
+```ts
+const ttlStore = createTTLStore({ defaultTTL: 60 * Time.Second })
+
+const encryptedStore = createEncryptedStore({
+  key: 'this is secret sauce',
+  salt: 'this is salty',
+  store: ttlStore,
+})
+
+export const { createCachedFunction, cacheQuery } = createCache({
+  stores: [encryptedStore],
+})
 ```
 
 ## Optimizations and advanced usage
@@ -531,8 +476,6 @@ exampleOriginalFn('example') // bypasses the cache
 
 If there are large payloads in the memoized function calls, these are stored as a part of the cache key. Some middleware could be utilized if this is the case to hash the key payload and store the hash as the key instead.
 
-The encryption middlware hashes the key by default and is an option to use that for larger keys.
-
 ## Dispose support
 
 The cache supports automatic disposing of the cache with the [using](https://www.totaltypescript.com/typescript-5-2-new-keyword-using) and its stores from `typescript >= 5.2`. This is useful for cleaning up resources when the cache is no longer needed rather than calling the dispose manually.
@@ -551,7 +494,7 @@ async function main() {
 
 ## References
 
-This was inspired by the apis and code [@unkey/cache](https://www.npmjs.com/package/@unkey/cache) and [react-query](https://tanstack.com/query). Laravel also has a similar [caching](https://laravel.com/docs/master/cache) api.
+This was inspired by the apis and code [@unkey/cache](https://www.npmjs.com/package/@unkey/cache) and [react-query](https://tanstack.com/query).
 
 The primary difference to `@unkey/cache` is that this package is more focused on providing an even more simple api so that each function that is called doesn't need to generate it's own store itself and to allow per function based cache invalidation and configuration of stale and expiry times.
 

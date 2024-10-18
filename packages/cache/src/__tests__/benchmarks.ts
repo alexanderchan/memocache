@@ -1,12 +1,14 @@
+import { Time } from '@alexmchan/memocache-common'
 import { createClient } from '@libsql/client'
 import { Redis } from 'ioredis'
 import { performance } from 'perf_hooks'
 
 import { createEncryptedStore } from '@/middleware/encryption'
-import { createRedisStore, createTTLStore } from '@/stores'
+import { createTTLStore } from '@/stores'
 import { createSqliteStore } from '@/stores/sqlite'
-import { createUpstashRedisStore } from '@/stores/upstash-redis'
-import { Time } from '@/time'
+
+import { createRedisStore } from '../../../store-redis/dist'
+import { createUpstashRedisStore } from '../../../store-redis/dist'
 
 // Function to run the benchmark
 async function runBenchmark(store: any, iterations: number) {

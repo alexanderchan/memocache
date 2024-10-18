@@ -1,9 +1,9 @@
+import { hashKey } from '@alexmchan/memocache-common'
+import { Time } from '@alexmchan/memocache-common'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { hashKey } from '@/hash'
 import { createEncryptedStore } from '@/middleware/encryption'
 import { createTTLStore } from '@/stores/ttl'
-import { Time } from '@/time'
 
 describe('Encrypted TTL Cache', () => {
   let ttlCache: ReturnType<typeof createTTLStore>

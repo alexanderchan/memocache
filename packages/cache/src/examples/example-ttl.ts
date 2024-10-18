@@ -1,6 +1,7 @@
+import { Time } from '@alexmchan/memocache-common'
+
 import { createCache } from '@/cache'
 import { createTTLStore } from '@/stores'
-import { Time } from '@/time'
 
 let count = 0
 function hello({ message }: { message: string }) {

@@ -1,9 +1,10 @@
+import {
+  CacheStore,
+  defaultLogger,
+  Logger,
+  Time,
+} from '@alexmchan/memocache-common'
 import { Redis } from '@upstash/redis'
-
-import { defaultLogger, Logger } from '@/logger'
-import { Time } from '@/time'
-
-import { CacheStore } from '../cache'
 
 export const createUpstashRedisStore = ({
   redisClient: redisClientProp,

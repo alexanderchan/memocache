@@ -1,3 +1,5 @@
+import { hashKey } from '@alexmchan/memocache-common'
+import { CacheStore, Time } from '@alexmchan/memocache-common'
 import {
   afterAll,
   afterEach,
@@ -8,10 +10,7 @@ import {
   vi,
 } from 'vitest'
 
-import { CacheStore } from '@/cache'
-import { hashKey } from '@/hash'
 import { createSqliteStore } from '@/stores/sqlite'
-import { Time } from '@/time'
 
 describe('TTL Cache', () => {
   let store: CacheStore

@@ -1,9 +1,9 @@
+import { Time } from '@alexmchan/memocache-common'
+import { hashKey } from '@alexmchan/memocache-common'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createCache } from '@/cache'
-import { hashKey } from '@/hash'
 import { createTTLStore } from '@/stores/ttl'
-import { Time } from '@/time'
 
 describe('cacheQuery', () => {
   let cache: ReturnType<typeof createCache>
@@ -217,12 +217,48 @@ describe('cacheQuery', () => {
     // so this will be the same between runs
     // but any small difference will invalidate the cache
     expect(await differentCachedFn.getCachePrefix()).toMatchInlineSnapshot(
-      `"6f80c34d72bd3ff791b7798bacdcf1caab6c332399ffed522a774d78b59ac3bf"`,
+      `"/6f80c34d72bd3ff791b7798bacdcf1caab6c332399ffed522a774d78b59ac3bf"`,
+    )
+
+    function exampleFunction() {
+      return null
+    }
+
+    const cachedExampleFunction = cache.createCachedFunction(exampleFunction)
+
+    const cachedPrefix = await cachedExampleFunction.getCachePrefix()
+
+    expect(cachedPrefix).toContain('exampleFunction')
+
+    expect(cachedPrefix).toMatchInlineSnapshot(
+      `"exampleFunction/77ec439eee577e52934f944b4362db068b173d7beac1b473b9b877025486296e"`,
     )
 
     const firstCallResult = await memoizedFn()
     expect(workFunction).toHaveBeenCalledTimes(1)
     expect(firstCallResult).toBe('test')
     expect(workFunction).toHaveBeenCalledTimes(1)
+  })
+
+  it('should allow for async initialization of stores', async () => {
+    const cache = createCache({
+      getStoresAsync() {
+        const ttlStore = createTTLStore({ defaultTTL: 5 * Time.Minute })
+        return Promise.resolve([ttlStore])
+      },
+    })
+
+    const workFunction = vi.fn().mockResolvedValue('test')
+    const memoizedFn = cache.createCachedFunction(workFunction)
+
+    const firstCallResult = await memoizedFn({ example: true })
+    expect(workFunction).toHaveBeenCalledTimes(1)
+    expect(firstCallResult).toBe('test')
+
+    await memoizedFn.invalidate({ example: true })
+    await memoizedFn({ example: true })
+    expect(workFunction).toHaveBeenCalledTimes(2)
+    await memoizedFn({ example: true })
+    expect(workFunction).toHaveBeenCalledTimes(2)
   })
 })

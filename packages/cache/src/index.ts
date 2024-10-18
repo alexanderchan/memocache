@@ -1,8 +1,18 @@
 export * from '@/cache'
-export * from '@/context'
 export * from '@/error'
-export * from '@/hash'
-export * from '@/logger'
 export * from '@/middleware'
 export * from '@/stores/index'
-export * from '@/time'
+
+import type { Context, Logger, QueryKey } from '@alexmchan/memocache-common'
+
+export type { Context, Logger, QueryKey }
+
+import {
+  defaultLogger,
+  DefaultStatefulContext,
+  hashKey,
+  hashString,
+  Time,
+} from '@alexmchan/memocache-common'
+
+export { defaultLogger, DefaultStatefulContext, hashKey, hashString, Time }

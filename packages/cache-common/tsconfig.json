@@ -1,13 +1,6 @@
 {
   /* Visit https://aka.ms/tsconfig to read more about this file */
-  "include": [
-    "./**/*.ts",
-    "**/*.js",
-    "*.ts",
-    "*.tsx",
-    "vitest.config.mjs",
-    "../cache-common/src/context.ts"
-  ],
+  "include": ["./**/*.ts", "**/*.js", "*.ts", "*.tsx", "vitest.config.mjs"],
   "exclude": ["node_modules", "./dist", "build"],
   "compilerOptions": {
     "rootDir": "./",

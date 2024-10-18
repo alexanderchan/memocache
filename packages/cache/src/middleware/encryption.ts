@@ -1,7 +1,6 @@
+import { CacheStore } from '@alexmchan/memocache-common'
 import memoizeLast from 'just-memoize-last'
 import superjson from 'superjson'
-
-import { CacheStore } from '@/cache'
 
 // we memozie only the last one because this will be
 // only needed for the use case of store1.set => store2.set
@@ -98,8 +97,8 @@ export function createEncryptedStore({
     async set(key: string, value: any, ttl?: number) {
       await lazyInitialize()
 
-      // need to benchmark to see if serialization vs re-encrypting is faster
-      // most likely depends on data size
+      // json stringifying is faster than re-encrypting
+      // but it's still unlikely that this happens often
       const encryptedData = shouldUseMemoize
         ? await encryptMemoized(value, cryptoKey)
         : await encrypt(value, cryptoKey)

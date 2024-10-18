@@ -1,7 +1,6 @@
+import { hashKey } from '@alexmchan/memocache-common'
+import { Time } from '@alexmchan/memocache-common'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-
-import { hashKey } from '@/hash'
-import { Time } from '@/time'
 
 import { createTTLStore } from '../ttl'
 

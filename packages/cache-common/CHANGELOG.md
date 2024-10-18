@@ -6,76 +6,35 @@
 
 - 2ff3f6e: add cjs to builds because jest is broken
 
-### Patch Changes
-
-- Updated dependencies [2ff3f6e]
-  - @alexmchan/memocache-common@0.6.0
-
 ## 0.5.10
-
-### Patch Changes
-
-- 361b39e: add cjs jest
-  - @alexmchan/memocache-common@0.5.10
 
 ## 0.5.9
 
-### Patch Changes
-
-- 4e8d11c: publish module
-  - @alexmchan/memocache-common@0.5.9
-
 ## 0.5.8
-
-### Patch Changes
-
-- 1d9d36c: add the store name to the metric
-  - @alexmchan/memocache-common@0.5.8
 
 ## 0.5.7
 
-### Patch Changes
-
-- 79dc60c: add metrics and improve function name
-  - @alexmchan/memocache-common@0.5.7
-
 ## 0.5.6
-
-### Patch Changes
-
-- d6808b1: no reexport changeset
-  - @alexmchan/memocache-common@0.5.6
 
 ## 0.5.5
 
 ### Patch Changes
 
 - 5b09e1b: fix types
-- Updated dependencies [5b09e1b]
-  - @alexmchan/memocache-common@0.5.5
 
 ## 0.5.4
 
 ### Patch Changes
 
 - cc638c3: try alternative export
-- Updated dependencies [cc638c3]
-  - @alexmchan/memocache-common@0.5.4
 
 ## 0.5.3
 
 ### Patch Changes
 
 - cce4dee: internal common package refactor
-- Updated dependencies [cce4dee]
-  - @alexmchan/memocache-common@0.5.3
 
 ## 0.5.2
-
-### Patch Changes
-
-- 4722e86: Allow for asynchronous store creation
-  - @alexmchan/memocache-common@0.5.2
 
 ## 0.5.1
 
@@ -88,12 +47,6 @@
 ### Minor Changes
 
 - be24ec8: extract redis store and common
-
-## 0.4.12
-
-### Patch Changes
-
-- 2c77dd7: update exports
 
 ## 0.4.11
 

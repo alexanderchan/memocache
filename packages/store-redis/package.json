@@ -1,21 +1,16 @@
 {
-  "name": "@alexmchan/memocache",
+  "name": "@alexmchan/memocache-store-redis",
   "version": "0.6.0",
   "private": false,
   "dependencies": {
-    "@isaacs/ttlcache": "^1.4.1",
-    "@libsql/client": "^0.14.0",
-    "just-memoize-last": "^3.2.0",
+    "@upstash/redis": "^1.34.3",
+    "ioredis": "^5.4.1",
     "superjson": "^2.2.1",
     "@alexmchan/memocache-common": "workspace:^"
   },
   "devDependencies": {
-    "@arethetypeswrong/cli": "^0.16.4",
     "@repo/eslint-config": "workspace:^",
-    "@alexmchan/memocache-store-redis": "workspace:^",
     "@testcontainers/redis": "^10.13.2",
-    "ioredis": "^5.4.1",
-    "testcontainers": "^10.13.2",
     "tsup": "^8.3.0",
     "typescript": "^5.6.3",
     "typescript-eslint": "^8.9.0",
@@ -35,7 +30,6 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
     "test:watch": "vitest --watch"
   },
   "type": "module",

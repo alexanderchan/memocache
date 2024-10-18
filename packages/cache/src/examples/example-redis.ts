@@ -1,10 +1,10 @@
+import { Context, Time } from '@alexmchan/memocache-common'
 import { Redis } from 'ioredis'
 
 import { createCache } from '@/cache'
-import { Context } from '@/context'
 import { createEncryptedStore } from '@/middleware/encryption'
-import { createRedisStore } from '@/stores'
-import { Time } from '@/time'
+
+import { createRedisStore } from '../../../store-redis/dist'
 
 const redisStore = createRedisStore({
   redisClient: new Redis({
@@ -29,6 +29,10 @@ class SimpleContext implements Context {
 
   waitUntil(p: Promise<unknown>) {
     this.waitables.push(p)
+
+    if (this.waitables.length > 1000) {
+      this.flushCache()
+    }
   }
 
   async flushCache() {

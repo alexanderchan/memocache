@@ -1,23 +1,16 @@
-import { Context, DefaultStatefulContext } from '@/context'
-import { hashKey, hashString, QueryKey } from '@/hash'
-import { defaultLogger, Logger } from '@/logger'
+import {
+  CacheStore,
+  Context,
+  defaultLogger,
+  DefaultStatefulContext,
+  hashKey,
+  hashString,
+  Logger,
+  QueryKey,
+  Time,
+} from '@alexmchan/memocache-common'
 
 import { CacheError } from './error/cache-error'
-import { Time } from './time'
-
-export interface CacheStore extends AsyncDisposable {
-  /** a name for metrics */
-  name: string
-  /** Set a value in the store, ttl in milliseconds */
-  set(key: string, value: any, ttl?: number): Promise<any>
-  get(key: string): Promise<any>
-  delete(key: string): Promise<unknown>
-
-  /** Remove all values from the store */
-  clear?(): Promise<any>
-  /** dispose of any resources or connections when the cache is no longer in use */
-  dispose?(): Promise<any>
-}
 
 interface CacheQueryOptions {
   ttl?: number
@@ -25,10 +18,19 @@ interface CacheQueryOptions {
   cachePrefix?: string
 }
 interface CacheOptions {
-  stores: CacheStore[]
+  /** An array of stores, order read from will be first in the array to last */
+  stores?: CacheStore[]
+  /** An array of asynchronously created stores.  Some edge environments need to dynamically load libraries that can't be used in both such as ioredis */
+  getStoresAsync?: () => Promise<CacheStore[]>
+  /** A context to allow for cache cleanup in edge */
   context?: Context
+  /** Default time to live (expiry) in milliseconds from now to expire a record if no other overrides are provided
+   *  Default is 5 minutes, order of preference is function => store => default
+   */
   defaultTTL?: number
+  /** Default time in milliseconds to consider data fresh and not revalidate.  Fresh data is served and no request to the backend will be made */
   defaultFresh?: number
+  /** Logger to use for cache errors */
   logger?: Logger
 }
 
@@ -37,12 +39,52 @@ const DEFAULT_TTL = 5 * Time.Minute // how long to keep data in cache
 
 export const createCache = ({
   stores,
+  getStoresAsync,
   defaultTTL = DEFAULT_TTL,
   defaultFresh = DEFAULT_FRESH,
   logger = defaultLogger,
   context,
 }: CacheOptions) => {
   const _context = context || new DefaultStatefulContext()
+
+  if (!stores && !getStoresAsync) {
+    throw new CacheError({
+      key: 'stores',
+      message: 'No stores provided',
+    })
+  }
+
+  const _stores: CacheStore[] = []
+  let hasInitialized = false
+
+  async function getStores(): Promise<CacheStore[]> {
+    if (hasInitialized) {
+      return _stores
+    }
+
+    if (stores) {
+      _stores.push(...stores)
+      hasInitialized = true
+      return _stores
+    }
+
+    if (getStoresAsync) {
+      try {
+        _stores.push(...(await getStoresAsync()))
+      } catch {
+        logger.error(
+          new CacheError({
+            key: 'stores',
+            message: 'Failed to get stores',
+          }),
+        )
+      }
+    }
+
+    hasInitialized = true
+
+    return _stores
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
   async function cacheQuery<T extends Function>({
@@ -64,7 +106,9 @@ export const createCache = ({
       ...options,
     }
 
-    for (const store of stores) {
+    const _stores = await getStores()
+
+    for (const store of _stores) {
       result = await store.get(key)
 
       if (result) {
@@ -92,7 +136,7 @@ export const createCache = ({
     const newData = await queryFn()
 
     const writeToStoresPromise = Promise.allSettled(
-      stores.map((store) =>
+      _stores.map((store) =>
         store.set(key, { value: newData, age: Date.now() }, localOptions?.ttl),
       ),
     )
@@ -116,9 +160,11 @@ export const createCache = ({
     try {
       newData = await queryFn()
 
+      const _stores = await getStores()
+
       // update all the stores with the new data
       const storesUpdatedResultsPromise = Promise.allSettled(
-        stores.map(
+        _stores.map(
           async (store) =>
             await store.set(queryKey, { value: newData, age: Date.now() }, ttl),
         ),
@@ -161,8 +207,9 @@ export const createCache = ({
     }
   }
 
-  function dispose() {
-    return Promise.allSettled(stores.map((store) => store.dispose?.()))
+  async function dispose() {
+    const _stores = await getStores()
+    return Promise.allSettled(_stores.map((store) => store.dispose?.()))
   }
 
   //  a memoize function that uses the function.toString() to generate a key
@@ -177,7 +224,10 @@ export const createCache = ({
 
     async function getCachePrefix() {
       if (!cachedFunctionSettings.cachePrefix) {
-        cachedFunctionSettings.cachePrefix = await hashString(fn?.toString())
+        const functionString = fn.toString()
+        const functionName = fn.name
+        cachedFunctionSettings.cachePrefix =
+          `${functionName}/` + (await hashString(functionName + functionString))
       }
       return cachedFunctionSettings.cachePrefix
     }
@@ -201,7 +251,9 @@ export const createCache = ({
       const cachePrefix = await getCachePrefix()
       const key = hashKey([cachePrefix, args])
 
-      await Promise.allSettled(stores.map((store) => store.delete(key)))
+      const _stores = await getStores()
+
+      await Promise.allSettled(_stores.map((store) => store.delete(key)))
     }
 
     cachedFunction.getCachePrefix = getCachePrefix
