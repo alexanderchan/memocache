@@ -27,8 +27,7 @@ async function main() {
       return
     }
 
-    console.info('Changesets found:', fileCount)
-    console.info(await $`pnpm changeset status`)
+    console.info(`Changesets found:  ${fileCount}\n\n`)
 
     const branchName = `release-npm-${Date.now()}`
     const mainBranch = options.mainBranch
@@ -50,7 +49,6 @@ async function main() {
 
     await $`gh auth status`
 
-    console.info(`--- checkout branch release branch ${branchName}`)
     await $`git checkout -b ${branchName}`
 
     await $`pnpm changeset version`
