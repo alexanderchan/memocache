@@ -1,5 +1,18 @@
 # @alexmchan/memocache
 
+## 0.7.0
+
+### Minor Changes
+
+- f14d8c7: split packages
+
+### Patch Changes
+
+- 1af5b6d: fix types
+- c31450b: fix types
+- Updated dependencies [f14d8c7]
+  - @alexmchan/memocache-common@0.7.0
+
 ## 0.6.0
 
 ### Minor Changes

@@ -1,5 +1,11 @@
 # @alexmchan/memocache
 
+## 0.7.0
+
+### Minor Changes
+
+- f14d8c7: split packages
+
 ## 0.6.0
 
 ### Minor Changes
