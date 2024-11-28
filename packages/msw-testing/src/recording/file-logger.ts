@@ -21,7 +21,6 @@ let writeFileSync: typeof import('fs').writeFileSync
 export async function createMswFileLogger({
   filenameWithPath = process.cwd() + '/tmp/msw-recorder.ts',
 } = {}) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if (typeof (global as any).window !== 'undefined') {
     throw new Error(
       'createMswFileLogger can only be used in a Node.js environment',
