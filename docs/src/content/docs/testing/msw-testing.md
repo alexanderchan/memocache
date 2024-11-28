@@ -246,3 +246,5 @@ type RequestLogItem = {
 ```
 
 ## Diagram
+
+![msw diagram](https://raw.githubusercontent.com/alexanderchan/memocache/refs/heads/main/docs/src/assets/msw-diagram-1.svg)
