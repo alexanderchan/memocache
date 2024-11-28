@@ -24,6 +24,10 @@ export default defineConfig({
             { label: 'Usage', slug: 'guides/usage' },
           ],
         },
+        {
+          label: 'Testing',
+          items: [{ label: 'MSW Testing', slug: 'testing/msw-testing' }],
+        },
         // {
         //   label: 'Reference',
         //   autogenerate: { directory: 'reference' },
