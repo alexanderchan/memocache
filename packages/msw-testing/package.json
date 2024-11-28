@@ -1,0 +1,32 @@
+{
+  "name": "@alexmchan/msw-testing",
+  "version": "1.0.1",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "types": "dist/index.d.cts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.cjs",
+      "default": "./dist/index.cjs"
+    }
+  },
+  "scripts": {
+    "build": "tsup-node",
+    "build:watch": "yarn run build --watch",
+    "lint": "eslint --ext .ts,.tsx,.js,.cjs,.mjs src",
+    "lint:fix": "eslint --fix --ext .ts,.tsx src"
+  },
+  "repository": {
+    "url": "git@github.com/alexanderchan/memocache.git"
+  },
+  "peerDependencies": {
+    "msw": ">=2.0.0",
+    "prettier": ">=3.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "msw": "^2.6.6",
+    "prettier": "^3.2.5",
+    "tsup": "^8.3.0"
+  }
+}
