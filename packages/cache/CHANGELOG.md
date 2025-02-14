@@ -1,5 +1,12 @@
 # @alexmchan/memocache
 
+## 0.8.0
+
+### Minor Changes
+
+- 7d7d693: bump package
+- 990dfda: add cache dedupe
+
 ## 0.7.0
 
 ### Minor Changes
