@@ -262,3 +262,98 @@ describe('cacheQuery', () => {
     expect(workFunction).toHaveBeenCalledTimes(2)
   })
 })
+
+describe('request deduplication', () => {
+  let cache: ReturnType<typeof createCache>
+  let store: ReturnType<typeof createTTLStore>
+
+  beforeEach(() => {
+    store = createTTLStore({ defaultTTL: 5 * Time.Minute })
+    cache = createCache({ stores: [store] })
+  })
+
+  afterEach(async () => {
+    await store?.clear?.()
+  })
+
+  it('should deduplicate concurrent requests', async () => {
+    let queryCount = 0
+    const queryFn = vi.fn().mockImplementation(async () => {
+      queryCount++
+      await new Promise((resolve) => setTimeout(resolve, 10)) // Add delay to simulate work
+      return `result ${queryCount}`
+    })
+    const queryKey = ['test-dedup']
+
+    // Make 3 concurrent requests
+    const results = await Promise.all([
+      cache.cacheQuery({ queryFn, queryKey }),
+      cache.cacheQuery({ queryFn, queryKey }),
+      cache.cacheQuery({ queryFn, queryKey }),
+    ])
+
+    // Should only call queryFn once
+    expect(queryFn).toHaveBeenCalledTimes(1)
+
+    // All results should be identical
+    expect(results).toEqual(['result 1', 'result 1', 'result 1'])
+
+    // Make another request after the first batch
+    const laterResult = await cache.cacheQuery({ queryFn, queryKey })
+
+    // Should return cached result without calling queryFn again
+    expect(laterResult).toBe('result 1')
+    expect(queryFn).toHaveBeenCalledTimes(1)
+  })
+
+  it('should deduplicate concurrent revalidations', async () => {
+    let queryCount = 0
+    const queryFn = vi.fn().mockImplementation(async () => {
+      queryCount++
+      await new Promise((resolve) => setTimeout(resolve, 50)) // Add delay to simulate work
+      return `result ${queryCount}`
+    })
+    const queryKey = ['test-revalidate']
+
+    // Set stale data in cache
+    await store.set(hashKey(queryKey), {
+      value: 'stale data',
+      age: Date.now() - 1 * Time.Hour,
+    })
+
+    // Make 3 concurrent requests that will trigger revalidation
+    const results = await Promise.all([
+      cache.cacheQuery({ queryFn, queryKey }),
+      cache.cacheQuery({ queryFn, queryKey }),
+      cache.cacheQuery({ queryFn, queryKey }),
+    ])
+
+    // All requests should return stale data
+    expect(results).toEqual(['stale data', 'stale data', 'stale data'])
+
+    // Wait for background revalidation
+    await new Promise((resolve) => setTimeout(resolve, 100))
+
+    // Should only have called queryFn once for revalidation
+    expect(queryFn).toHaveBeenCalledTimes(1)
+
+    // Verify cache was updated with new value
+    const updatedResult = await store.get(hashKey(queryKey))
+    expect(updatedResult?.value).toBe('result 1')
+  })
+
+  it('should cleanup deduplication map after error', async () => {
+    const error = new Error('Test error')
+    const queryFn = vi.fn().mockRejectedValue(error)
+    const queryKey = ['test-error']
+
+    // First request should fail
+    await expect(cache.cacheQuery({ queryFn, queryKey })).rejects.toThrow(error)
+
+    // Second request should trigger a new attempt
+    await expect(cache.cacheQuery({ queryFn, queryKey })).rejects.toThrow(error)
+
+    // Should have called queryFn twice since the first error should have cleaned up the dedup map
+    expect(queryFn).toHaveBeenCalledTimes(2)
+  })
+})

@@ -13,9 +13,13 @@ import {
 import { CacheError } from './error/cache-error'
 
 interface CacheQueryOptions {
+  /** Time to live (expiry) in milliseconds from now to expire a record if no other overrides are provided */
   ttl?: number
+  /** Time in milliseconds to consider data fresh and not revalidate.  Fresh data is served and no request to the backend will be made */
   fresh?: number
+  /** A prefix to add to the cache key */
   cachePrefix?: string
+  /** An array of keys to ignore when hashing the query key */
 }
 interface CacheOptions {
   /** An array of stores, order read from will be first in the array to last */
@@ -56,6 +60,7 @@ export const createCache = ({
 
   const _stores: CacheStore[] = []
   let hasInitialized = false
+  const revalidating = new Map<string, Promise<any>>()
 
   async function getStores(): Promise<CacheStore[]> {
     if (hasInitialized) {
@@ -132,19 +137,33 @@ export const createCache = ({
     }
 
     // No data in cache, fetch from the source
+    try {
+      const existing = revalidating.get(key)
+      if (existing) {
+        return await existing
+      }
 
-    const newData = await queryFn()
+      const p = queryFn()
+      revalidating.set(key, p)
+      const newData = await p
 
-    const writeToStoresPromise = Promise.allSettled(
-      _stores.map((store) =>
-        store.set(key, { value: newData, age: Date.now() }, localOptions?.ttl),
-      ),
-    )
+      const writeToStoresPromise = Promise.allSettled(
+        _stores.map((store) =>
+          store.set(
+            key,
+            { value: newData, age: Date.now() },
+            localOptions?.ttl,
+          ),
+        ),
+      )
 
-    // kick off the store updates in the background
-    context?.waitUntil?.(writeToStoresPromise)
+      // kick off the store updates in the background
+      context?.waitUntil?.(writeToStoresPromise)
 
-    return newData
+      return newData
+    } finally {
+      revalidating.delete(key)
+    }
   }
 
   const revalidateInBackground = async ({
@@ -156,9 +175,15 @@ export const createCache = ({
     queryKey: string
     ttl?: number
   }) => {
-    let newData: any
     try {
-      newData = await queryFn()
+      const existing = revalidating.get(queryKey)
+      if (existing) {
+        return await existing
+      }
+
+      const p = queryFn()
+      revalidating.set(queryKey, p)
+      const newData = await p
 
       const _stores = await getStores()
 
@@ -204,6 +229,8 @@ export const createCache = ({
       )
       // we are in the background so we don't need to throw
       return
+    } finally {
+      revalidating.delete(queryKey)
     }
   }
 
@@ -239,7 +266,6 @@ export const createCache = ({
       // so that we can call createCachedFunction syncrhonously
 
       const cachePrefix = await getCachePrefix()
-
       return cacheQuery({
         queryFn: () => fn(...args),
         queryKey: [cachePrefix, args],
