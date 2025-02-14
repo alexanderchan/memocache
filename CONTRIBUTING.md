@@ -7,7 +7,7 @@ We welcome contributions to this project. Please read the [Contributing Guidelin
 Local only deployment at this time:
 
 ```sh
-pnpm run changeset
-pnpm run local-release
+pnpm changeset version
+pnpm release:local
 git push --follow-tags
 ```
