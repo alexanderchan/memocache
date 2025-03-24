@@ -1,5 +1,11 @@
 # @alexmchan/memocache
 
+## 0.8.1
+
+### Patch Changes
+
+- aa83146: Fix up types
+
 ## 0.8.0
 
 ### Minor Changes
