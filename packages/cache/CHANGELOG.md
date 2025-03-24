@@ -1,5 +1,11 @@
 # @alexmchan/memocache
 
+## 0.9.0
+
+### Minor Changes
+
+- d084a45: add cache invalidation and setting
+
 ## 0.8.2
 
 ### Patch Changes
