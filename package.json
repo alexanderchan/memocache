@@ -13,7 +13,7 @@
     "typecheck": "turbo run typecheck",
     "release:view": "gh pr list --app github-actions --web",
     "release:pr": "tsx ./scripts/merge-changeset-pr.ts",
-    "release:local": "changeset version && changeset publish",
+    "release:local": "pnpm run build && changeset version && changeset publish",
     "release": "pnpm run build && pnpm release:local && git push --follow-tags",
     "lint": "turbo run lint"
   },
