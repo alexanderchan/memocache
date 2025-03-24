@@ -26,15 +26,14 @@ pnpm install @alexmchan/memocache
 ### Basic Usage with TTL Store
 
 ```typescript
-import { createCache } from '@alexmchan/memocache'
-import { createTTLStore } from '@alexmchan/memocache/stores'
-import { Time } from '@alexmchan/memocache/time'
+import { createCache, createTTLStore } from '@alexmchan/memocache'
+import { Time } from '@alexmchan/memocache'
 
 const store = createTTLStore({
   defaultTTL: 5 * Time.Minute,
 })
 
-const cache = createCache({
+export const cache = createCache({
   defaultFresh: 30 * Time.Second,
   stores: [store],
 })
@@ -214,9 +213,8 @@ Creates a [libSql](https://www.npmjs.com/package/@libsql/client) SQLite store.
 - `options.cleanupInterval`: Interval for cleaning up expired entries
 
 ```typescript
-import { createCache } from '@alexmchan/memocache'
-import { createSqliteStore } from '@alexmchan/memocache/stores/sqlite'
-import { Time } from '@alexmchan/memocache/time'
+import { createCache, createSqliteStore } from '@alexmchan/memocache'
+import { Time } from '@alexmchan/memocache'
 import { createClient } from '@libsql/client'
 
 const sqliteClient = createClient({
