@@ -355,5 +355,22 @@ describe('request deduplication', () => {
 
     // Should have called queryFn twice since the first error should have cleaned up the dedup map
     expect(queryFn).toHaveBeenCalledTimes(2)
+
+    cache.cacheQuery({ queryFn, queryKey })
+
+    const res = await cache.cacheQuery({
+      queryKey: ['test-error'],
+      queryFn: async () => {
+        return {
+          data: 'example',
+        }
+      },
+    })
+
+    // we should get the data
+    console.info(res?.data)
+
+    // @ts-expect-error This property should not exist
+    console.info(res?.doesNotExist)
   })
 })

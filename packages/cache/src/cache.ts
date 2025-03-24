@@ -91,8 +91,7 @@ export const createCache = ({
     return _stores
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-  async function cacheQuery<T extends Function>({
+  async function cacheQuery<T = unknown>({
     queryFn,
     queryKey,
     options,
@@ -100,7 +99,7 @@ export const createCache = ({
     queryFn: () => Promise<T>
     queryKey: QueryKey
     options?: CacheQueryOptions
-  }) {
+  }): Promise<T> {
     let result = null
     let isFresh = false
     const key = hashKey(queryKey)
