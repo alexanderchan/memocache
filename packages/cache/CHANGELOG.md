@@ -1,5 +1,11 @@
 # @alexmchan/memocache
 
+## 0.8.2
+
+### Patch Changes
+
+- 1173f76: build fix
+
 ## 0.8.1
 
 ### Patch Changes
