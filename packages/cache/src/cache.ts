@@ -238,6 +238,25 @@ export const createCache = ({
     return Promise.allSettled(_stores.map((store) => store.dispose?.()))
   }
 
+  const invalidate = async ({ queryKey }: { queryKey: any[] }) => {
+    const key = hashKey(queryKey)
+    const stores = await getStores()
+
+    await Promise.allSettled(stores.map((store) => store.delete(key)))
+  }
+
+  const setCacheData = async ({
+    queryKey,
+    value,
+  }: {
+    queryKey: any[]
+    value: any
+  }) => {
+    const key = hashKey(queryKey)
+    const stores = await getStores()
+    await Promise.allSettled(stores.map((store) => store.set(key, value)))
+  }
+
   //  a memoize function that uses the function.toString() to generate a key
 
   function createCachedFunction<T extends (...args: any[]) => any>(
@@ -274,11 +293,8 @@ export const createCache = ({
 
     cachedFunction.invalidate = async (...args: Parameters<T>) => {
       const cachePrefix = await getCachePrefix()
-      const key = hashKey([cachePrefix, args])
 
-      const _stores = await getStores()
-
-      await Promise.allSettled(_stores.map((store) => store.delete(key)))
+      await invalidate({ queryKey: [cachePrefix, args] })
     }
 
     cachedFunction.getCachePrefix = getCachePrefix
@@ -288,6 +304,9 @@ export const createCache = ({
 
   return {
     cacheQuery,
+    invalidate,
+    setCacheData,
+
     createCachedFunction,
     dispose,
     context: _context,
