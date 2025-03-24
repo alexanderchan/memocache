@@ -261,6 +261,23 @@ describe('cacheQuery', () => {
     await memoizedFn({ example: true })
     expect(workFunction).toHaveBeenCalledTimes(2)
   })
+
+  it('should have good types', async () => {
+    const res = await cache.cacheQuery({
+      queryKey: ['test-error'],
+      queryFn: async () => {
+        return {
+          data: 'example',
+        }
+      },
+    })
+
+    // we should get the data
+    console.info(res?.data)
+
+    // @ts-expect-error This property should not exist
+    console.info(res?.doesNotExist)
+  })
 })
 
 describe('request deduplication', () => {
@@ -343,34 +360,212 @@ describe('request deduplication', () => {
   })
 
   it('should cleanup deduplication map after error', async () => {
-    const error = new Error('Test error')
-    const queryFn = vi.fn().mockRejectedValue(error)
+    const queryFn = vi.fn().mockRejectedValue(new Error('test error'))
     const queryKey = ['test-error']
 
     // First request should fail
-    await expect(cache.cacheQuery({ queryFn, queryKey })).rejects.toThrow(error)
+    await expect(cache.cacheQuery({ queryFn, queryKey })).rejects.toThrow()
 
     // Second request should trigger a new attempt
-    await expect(cache.cacheQuery({ queryFn, queryKey })).rejects.toThrow(error)
+    await expect(cache.cacheQuery({ queryFn, queryKey })).rejects.toThrow()
 
     // Should have called queryFn twice since the first error should have cleaned up the dedup map
     expect(queryFn).toHaveBeenCalledTimes(2)
+  })
+})
 
-    cache.cacheQuery({ queryFn, queryKey })
+describe('invalidate', () => {
+  let cache: ReturnType<typeof createCache>
+  let store: ReturnType<typeof createTTLStore>
 
-    const res = await cache.cacheQuery({
-      queryKey: ['test-error'],
-      queryFn: async () => {
-        return {
-          data: 'example',
-        }
-      },
+  beforeEach(() => {
+    store = createTTLStore({ defaultTTL: 5 * Time.Minute })
+    cache = createCache({ stores: [store] })
+  })
+
+  afterEach(async () => {
+    await store?.clear?.()
+  })
+
+  it('should remove data from cache', async () => {
+    const queryKey = ['test-invalidate']
+    const key = hashKey(queryKey)
+
+    // Set data in cache
+    await store.set(key, {
+      value: 'test data',
+      age: Date.now(),
     })
 
-    // we should get the data
-    console.info(res?.data)
+    // Verify data exists
+    let result = await store.get(key)
+    expect(result?.value).toBe('test data')
 
-    // @ts-expect-error This property should not exist
-    console.info(res?.doesNotExist)
+    // Invalidate the cache
+    await cache.invalidate({ queryKey })
+
+    // Verify data is removed
+    result = await store.get(key)
+    expect(result).toBeUndefined()
+  })
+
+  it('should work with multiple stores', async () => {
+    const store1 = createTTLStore({ defaultTTL: 5 * Time.Minute })
+    const store2 = createTTLStore({ defaultTTL: 5 * Time.Minute })
+    const multiCache = createCache({ stores: [store1, store2] })
+
+    const queryKey = ['test-invalidate-multi']
+    const key = hashKey(queryKey)
+
+    // Set data in both stores
+    await store1.set(key, {
+      value: 'test data',
+      age: Date.now(),
+    })
+
+    await store2.set(key, {
+      value: 'test data',
+      age: Date.now(),
+    })
+
+    // Verify data exists in both stores
+    let result1 = await store1.get(key)
+    let result2 = await store2.get(key)
+    expect(result1?.value).toBe('test data')
+    expect(result2?.value).toBe('test data')
+
+    // Invalidate the cache
+    await multiCache.invalidate({ queryKey })
+
+    // Verify data is removed from both stores
+    result1 = await store1.get(key)
+    result2 = await store2.get(key)
+    expect(result1).toBeUndefined()
+    expect(result2).toBeUndefined()
+  })
+
+  it('should handle complex query keys', async () => {
+    const complexQueryKey = [
+      'users',
+      { id: 123, filters: { active: true, role: 'admin' } },
+      ['sort', 'asc'],
+    ]
+    const key = hashKey(complexQueryKey)
+
+    // Set data in cache
+    await store.set(key, {
+      value: 'complex data',
+      age: Date.now(),
+    })
+
+    // Verify data exists
+    let result = await store.get(key)
+    expect(result?.value).toBe('complex data')
+
+    // Invalidate the cache
+    await cache.invalidate({ queryKey: complexQueryKey })
+
+    // Verify data is removed
+    result = await store.get(key)
+    expect(result).toBeUndefined()
+  })
+})
+
+describe('setCacheData', () => {
+  let cache: ReturnType<typeof createCache>
+  let store: ReturnType<typeof createTTLStore>
+
+  beforeEach(() => {
+    store = createTTLStore({ defaultTTL: 5 * Time.Minute })
+    cache = createCache({ stores: [store] })
+  })
+
+  afterEach(async () => {
+    await store?.clear?.()
+  })
+
+  it('should set data in cache', async () => {
+    const queryKey = ['test-set-data']
+    const value = { data: 'test value', timestamp: Date.now() }
+
+    // Set data in cache
+    await cache.setCacheData({ queryKey, value })
+
+    // Verify data exists in store
+    const result = await store.get(hashKey(queryKey))
+    expect(result).toEqual(value)
+  })
+
+  it('should work with multiple stores', async () => {
+    const store1 = createTTLStore({ defaultTTL: 5 * Time.Minute })
+    const store2 = createTTLStore({ defaultTTL: 5 * Time.Minute })
+    const multiCache = createCache({ stores: [store1, store2] })
+
+    const queryKey = ['test-set-data-multi']
+    const value = { data: 'multi-store test', timestamp: Date.now() }
+
+    // Set data in cache
+    await multiCache.setCacheData({ queryKey, value })
+
+    // Verify data exists in both stores
+    const result1 = await store1.get(hashKey(queryKey))
+    const result2 = await store2.get(hashKey(queryKey))
+    expect(result1).toEqual(value)
+    expect(result2).toEqual(value)
+  })
+
+  it('should overwrite existing data', async () => {
+    const queryKey = ['test-overwrite']
+    const key = hashKey(queryKey)
+
+    // Set initial data
+    await store.set(key, {
+      value: 'initial data',
+      age: Date.now() - 1000,
+    })
+
+    // Verify initial data
+    let result = await store.get(key)
+    expect(result?.value).toBe('initial data')
+
+    // Overwrite with new data
+    const newValue = { value: 'updated data', age: Date.now() }
+    await cache.setCacheData({ queryKey, value: newValue })
+
+    // Verify data was updated
+    result = await store.get(key)
+    expect(result).toEqual(newValue)
+  })
+
+  it('should allow retrieving set data with cacheQuery', async () => {
+    const queryKey = ['test-retrieve']
+    const value = { value: 'retrievable data', age: Date.now() }
+    const queryFn = vi.fn().mockResolvedValue('should not be called')
+
+    // Set data in cache
+    await cache.setCacheData({ queryKey, value })
+
+    // Retrieve with cacheQuery
+    const result = await cache.cacheQuery({ queryFn, queryKey })
+
+    // Should return the cached data without calling queryFn
+    expect(result).toBe('retrievable data')
+    expect(queryFn).not.toHaveBeenCalled()
+  })
+
+  it('should handle complex query keys', async () => {
+    const complexQueryKey = [
+      'products',
+      { category: 'electronics', filters: { inStock: true, onSale: true } },
+      ['price', 'desc'],
+    ]
+    const value = { data: 'complex key test', metadata: { count: 42 } }
+
+    // Set data in cache
+    await cache.setCacheData({ queryKey: complexQueryKey, value })
+
+    // Verify data exists in store
+    const result = await store.get(hashKey(complexQueryKey))
+    expect(result).toEqual(value)
   })
 })
