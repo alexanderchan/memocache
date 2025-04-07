@@ -10,7 +10,7 @@ import {
   vi,
 } from 'vitest'
 
-import { createSqliteStore } from '@/stores/sqlite'
+import { createSqliteStore } from '../sqlite.js'
 
 describe('TTL Cache', () => {
   let store: CacheStore

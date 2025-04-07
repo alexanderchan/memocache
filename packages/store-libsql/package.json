@@ -1,22 +1,22 @@
 {
-  "name": "@alexmchan/memocache-store-redis",
+  "name": "@alexmchan/memocache-store-libsql",
   "version": "0.7.0",
   "private": false,
   "dependencies": {
-    "@upstash/redis": "^1.34.3",
-    "ioredis": "^5.4.1",
-    "superjson": "^2.2.1",
+    "@upstash/redis": "^1.34.7",
+    "@libsql/client": "^0.15.2",
+    "superjson": "^2.2.2",
     "@alexmchan/memocache-common": "workspace:^"
   },
   "devDependencies": {
     "@alexmchan/memocache": "workspace:^",
     "@repo/eslint-config": "workspace:^",
-    "@testcontainers/redis": "^10.13.2",
-    "tsup": "^8.3.0",
-    "typescript": "^5.6.3",
-    "typescript-eslint": "^8.9.0",
-    "vite-tsconfig-paths": "^5.0.1",
-    "vitest": "^2.1.3"
+    "@testcontainers/redis": "^10.24.0",
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.29.0",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^3.1.1"
   },
   "repository": {
     "type": "git",

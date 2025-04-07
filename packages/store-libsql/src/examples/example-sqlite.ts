@@ -1,14 +1,13 @@
+import { createCache } from '@alexmchan/memocache'
 import { Time } from '@alexmchan/memocache-common'
 import { createClient } from '@libsql/client'
 
-import { createCache } from '@/cache'
-import { createMetricsStore } from '@/middleware'
-import { createSqliteStore } from '@/stores/sqlite'
+import { createSqliteStore } from '../stores/sqlite.js'
 
 let count = 0
 function hello({ message }: { message: string }) {
   count++
-  return `Hello, ${message}, ${count}!`
+  return `Hello, ${message}, call count: ${count}!`
 }
 
 async function main() {
@@ -22,12 +21,8 @@ async function main() {
     cleanupInterval: 5 * Time.Minute,
   })
 
-  const metricsSqliteStore = createMetricsStore({
-    store: sqliteStore,
-  })
-
   const cache = createCache({
-    stores: [metricsSqliteStore],
+    stores: [sqliteStore],
     // really low for testing make these higher
     defaultFresh: 200 * Time.Millisecond,
     defaultTTL: 2 * Time.Second,
