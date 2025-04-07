@@ -1,5 +1,11 @@
 # @alexmchan/memocache
 
+## 0.8.0
+
+### Minor Changes
+
+- de86f28: move sql out of main
+
 ## 0.7.0
 
 ### Minor Changes
