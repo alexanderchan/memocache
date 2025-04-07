@@ -25,7 +25,7 @@ async function main() {
     stores: [sqliteStore],
     // really low for testing make these higher
     defaultFresh: 200 * Time.Millisecond,
-    defaultTTL: 2 * Time.Second,
+    defaultTTL: 400 * Time.Millisecond,
   })
 
   const { createCachedFunction } = cache
