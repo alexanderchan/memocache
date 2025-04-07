@@ -12,7 +12,6 @@
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.16.4",
     "@repo/eslint-config": "workspace:^",
-    "@alexmchan/memocache-store-redis": "workspace:^",
     "@testcontainers/redis": "^10.13.2",
     "ioredis": "^5.4.1",
     "testcontainers": "^10.13.2",
