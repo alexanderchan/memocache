@@ -37,9 +37,14 @@ async function main() {
   console.log(await cachedHello({ message: 'world' }))
   console.log(await cachedHello({ message: 'world' }))
 
+  // Try with a different message
+  console.log(await cachedHello({ message: 'cache enthusiast' }))
+  console.log(await cachedHello({ message: 'cache enthusiast' }))
+
   await new Promise((resolve) =>
     setTimeout(async () => {
       console.log(await cachedHello({ message: 'world' }))
+      console.log(await cachedHello({ message: 'cache enthusiast' }))
       resolve(null)
     }, 600 * Time.Millisecond),
   )
