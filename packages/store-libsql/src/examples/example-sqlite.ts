@@ -1,14 +1,13 @@
+import { createCache } from '@alexmchan/memocache'
 import { Time } from '@alexmchan/memocache-common'
 import { createClient } from '@libsql/client'
 
-import { createCache } from '@/cache'
-import { createMetricsStore } from '@/middleware'
-import { createSqliteStore } from '@/stores/sqlite'
+import { createSqliteStore } from '../stores/sqlite.js'
 
 let count = 0
 function hello({ message }: { message: string }) {
   count++
-  return `Hello, ${message}, ${count}!`
+  return `Hello, ${message}, call count: ${count}!`
 }
 
 async function main() {
@@ -22,15 +21,11 @@ async function main() {
     cleanupInterval: 5 * Time.Minute,
   })
 
-  const metricsSqliteStore = createMetricsStore({
-    store: sqliteStore,
-  })
-
   const cache = createCache({
-    stores: [metricsSqliteStore],
+    stores: [sqliteStore],
     // really low for testing make these higher
     defaultFresh: 200 * Time.Millisecond,
-    defaultTTL: 2 * Time.Second,
+    defaultTTL: 400 * Time.Millisecond,
   })
 
   const { createCachedFunction } = cache
@@ -42,9 +37,14 @@ async function main() {
   console.log(await cachedHello({ message: 'world' }))
   console.log(await cachedHello({ message: 'world' }))
 
+  // Try with a different message
+  console.log(await cachedHello({ message: 'cache enthusiast' }))
+  console.log(await cachedHello({ message: 'cache enthusiast' }))
+
   await new Promise((resolve) =>
     setTimeout(async () => {
       console.log(await cachedHello({ message: 'world' }))
+      console.log(await cachedHello({ message: 'cache enthusiast' }))
       resolve(null)
     }, 600 * Time.Millisecond),
   )

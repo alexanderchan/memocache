@@ -1,24 +1,8 @@
+import { createCache } from '@alexmchan/memocache'
 import { Context, Time } from '@alexmchan/memocache-common'
 import { Redis } from 'ioredis'
 
-import { createCache } from '@/cache'
-import { createEncryptedStore } from '@/middleware/encryption'
-
-import { createRedisStore } from '../../../store-redis/dist'
-
-const redisStore = createRedisStore({
-  redisClient: new Redis({
-    host: 'localhost',
-    port: 6379,
-  }),
-  defaultTTL: 5 * Time.Minute,
-})
-
-const encryptedRedisStore = createEncryptedStore({
-  store: redisStore,
-  key: 'my-secret',
-  salt: 'my-salt',
-})
+import { createRedisStore } from '../stores/redis.js'
 
 //**----------------------------------------------------
 /* This is a simple context and only for serverless environments
@@ -45,25 +29,35 @@ class SimpleContext implements Context {
   }
 }
 
-const localContext = new SimpleContext()
-
-export const { createCachedFunction, cacheQuery, dispose } = createCache({
-  stores: [encryptedRedisStore],
-  // really low for testing make these higher
-  defaultFresh: 200 * Time.Millisecond,
-  defaultTTL: 2 * Time.Second,
-  context: localContext,
-})
-
-let count = 0
-function hello({ message }: { message: string }) {
-  count++
-  return `Hello, ${message}, ${count}!`
-}
-
-const cachedHello = createCachedFunction(hello)
-
 async function main() {
+  const redisStore = createRedisStore({
+    redisClient: new Redis({
+      host: 'localhost',
+      port: 6379,
+    }),
+    defaultTTL: 5 * Time.Minute,
+  })
+
+  const localContext = new SimpleContext()
+
+  const cache = createCache({
+    stores: [redisStore],
+    // really low for testing make these higher
+    defaultFresh: 200 * Time.Millisecond,
+    defaultTTL: 2 * Time.Second,
+    context: localContext,
+  })
+
+  const { createCachedFunction } = cache
+
+  let count = 0
+  function hello({ message }: { message: string }) {
+    count++
+    return `Hello, ${message}, ${count}!`
+  }
+
+  const cachedHello = createCachedFunction(hello)
+
   await cachedHello.invalidate({ message: 'world' })
 
   console.log(await cachedHello({ message: 'world' }))
@@ -77,7 +71,7 @@ async function main() {
   )
 
   await localContext.flushCache()
-  await dispose()
+  await cache.dispose()
 }
 
 main()

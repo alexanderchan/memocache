@@ -10,6 +10,8 @@ import {
   Time,
 } from '@alexmchan/memocache-common'
 
+import { createTTLStore } from '@/stores'
+
 import { CacheError } from './error/cache-error'
 
 interface CacheQueryOptions {
@@ -42,7 +44,7 @@ const DEFAULT_FRESH = 30 * Time.Second // when data is fresh we don't revalidate
 const DEFAULT_TTL = 5 * Time.Minute // how long to keep data in cache
 
 export const createCache = ({
-  stores,
+  stores = [createTTLStore({ defaultTTL: DEFAULT_TTL })],
   getStoresAsync,
   defaultTTL = DEFAULT_TTL,
   defaultFresh = DEFAULT_FRESH,

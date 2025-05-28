@@ -26,15 +26,14 @@ pnpm install @alexmchan/memocache
 ### Basic Usage with TTL Store
 
 ```typescript
-import { createCache } from '@alexmchan/memocache'
-import { createTTLStore } from '@alexmchan/memocache/stores'
-import { Time } from '@alexmchan/memocache/time'
+import { createCache, createTTLStore } from '@alexmchan/memocache'
+import { Time } from '@alexmchan/memocache'
 
 const store = createTTLStore({
   defaultTTL: 5 * Time.Minute,
 })
 
-const cache = createCache({
+export const cache = createCache({
   defaultFresh: 30 * Time.Second,
   stores: [store],
 })
@@ -205,19 +204,19 @@ const store = createTTLStore({
 })
 ```
 
-### SQLite Store `createSqliteStore(options)`
+### LibSQL Store
 
-Creates a [libSql](https://www.npmjs.com/package/@libsql/client) SQLite store.
+For SQLite/LibSQL storage, use the [@alexmchan/memocache-store-libsql](https://github.com/alexmchan/memocache/tree/main/packages/store-libsql) package.
 
-- `options.sqliteClient`: An instance of `@libsql/client`
-- `options.defaultTTL`: Default Time-To-Live for cache entries
-- `options.cleanupInterval`: Interval for cleaning up expired entries
+```bash
+pnpm install @alexmchan/memocache-store-libsql
+```
 
 ```typescript
 import { createCache } from '@alexmchan/memocache'
-import { createSqliteStore } from '@alexmchan/memocache/stores/sqlite'
-import { Time } from '@alexmchan/memocache/time'
+import { Time } from '@alexmchan/memocache-common'
 import { createClient } from '@libsql/client'
+import { createSqliteStore } from '@alexmchan/memocache-store-libsql'
 
 const sqliteClient = createClient({
   url: 'file::memory:', // or file:./cache.db
@@ -225,7 +224,7 @@ const sqliteClient = createClient({
 
 const sqliteStore = createSqliteStore({
   sqliteClient,
-  cleanupIntervalp: 5 * Time.Minute,
+  cleanupInterval: 5 * Time.Minute,
   defaultTTL: 10 * Time.Minute,
 })
 
