@@ -1,7 +1,7 @@
 // @ts-check
 import { defineConfig } from 'astro/config'
 import starlight from '@astrojs/starlight'
-import tailwind from '@astrojs/tailwind'
+import tailwindcss from '@tailwindcss/vite'
 
 // https://astro.build/config
 export default defineConfig({
@@ -10,9 +10,9 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'Memocache Docs',
-      social: {
-        github: 'https://github.com/alexanderchan/memocache',
-      },
+      social: [
+        { icon: 'github', label: 'GitHub', href: 'https://github.com/alexanderchan/memocache' },
+      ],
       editLink: {
         baseUrl: 'https://github.com/alexanderchan/memocache/edit/main/docs',
       },
@@ -36,6 +36,8 @@ export default defineConfig({
       customCss: ['./src/tailwind.css'],
       favicon: '/favicon.ico',
     }),
-    tailwind({ applyBaseStyles: false }),
   ],
+  vite: {
+    plugins: [tailwindcss()],
+  },
 })
