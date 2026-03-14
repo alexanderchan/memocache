@@ -1,6 +1,6 @@
 {
 	"name": "@alexmchan/memocache-store-libsql",
-	"version": "0.8.0",
+	"version": "1.0.0",
 	"private": false,
 	"dependencies": {
 		"@upstash/redis": "^1.37.0",
