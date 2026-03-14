@@ -1,9 +1,9 @@
 import { CacheStore } from '@alexmchan/memocache-common'
 import { hashKey, Time } from '@alexmchan/memocache-common'
-import { RedisContainer, StartedRedisContainer } from '@testcontainers/redis'
 import { Redis } from 'ioredis'
 import {
   afterAll,
+  afterEach,
   beforeAll,
   beforeEach,
   describe,
@@ -16,17 +16,9 @@ import { createRedisStore } from '../redis.js'
 
 describe('Redis Cache', () => {
   let store: CacheStore
-  let redisContainer: StartedRedisContainer
   let redisClient: Redis
   beforeAll(async () => {
-    redisContainer = await new RedisContainer(
-      'valkey/valkey:7.2.6-alpine', // https://docs.aws.amazon.com/AmazonElastiCache/latest/dg/supported-engine-versions.html
-    ).start()
-
-    redisContainer.getConnectionUrl()
-    redisClient = new Redis({
-      port: redisContainer.getPort(),
-    })
+    redisClient = new Redis({ host: 'localhost', port: 6379 })
   })
   beforeEach(() => {
     store = createRedisStore({
@@ -35,9 +27,13 @@ describe('Redis Cache', () => {
     })
   })
 
+  afterEach(async () => {
+    // Clean up test keys
+    await (redisClient as Redis).flushdb()
+  })
+
   afterAll(async () => {
     await store?.dispose?.()
-    await redisContainer.stop()
   })
 
   it('should set and get a value', async () => {

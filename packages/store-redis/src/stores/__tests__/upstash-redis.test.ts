@@ -10,16 +10,10 @@ function createMockRedisClient() {
 
   return {
     ping: vi.fn().mockResolvedValue('PONG'),
-    set: vi.fn(
-      async (
-        key: string,
-        value: unknown,
-        _options?: { px?: number },
-      ) => {
-        store.set(key, value)
-        return 'OK'
-      },
-    ),
+    set: vi.fn(async (key: string, value: unknown) => {
+      store.set(key, value)
+      return 'OK'
+    }),
     get: vi.fn(async (key: string) => {
       return store.has(key) ? store.get(key) : null
     }),
@@ -41,7 +35,6 @@ describe('Upstash Redis Store', () => {
   beforeEach(() => {
     mockClient = createMockRedisClient()
     store = createUpstashRedisStore({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       redisClient: mockClient as any,
       defaultTTL: 60 * Time.Second,
     })

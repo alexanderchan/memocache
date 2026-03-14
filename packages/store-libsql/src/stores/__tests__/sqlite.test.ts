@@ -124,8 +124,12 @@ describe('TTL Cache', () => {
 
 describe('SQLite tableName validation', () => {
   it('should throw on invalid tableName', () => {
-    expect(() => createSqliteStore({ tableName: 'my; DROP TABLE cache;--' })).toThrow()
-    expect(() => createSqliteStore({ tableName: 'valid_table_name' })).not.toThrow()
+    expect(() =>
+      createSqliteStore({ tableName: 'my; DROP TABLE cache;--' }),
+    ).toThrow()
+    expect(() =>
+      createSqliteStore({ tableName: 'valid_table_name' }),
+    ).not.toThrow()
   })
 })
 
@@ -162,11 +166,8 @@ describe('SQLite cleanup interval', () => {
     // Set an entry that expires quickly
     await store.set('interval-key', { value: 'data', age: Date.now() }, 100)
 
-    // Advance time past TTL and cleanup interval
-    vi.advanceTimersByTime(600)
-
-    // Give async cleanup a chance to run
-    await vi.runAllTimersAsync()
+    // Advance time past TTL and cleanup interval, allowing async callbacks to run
+    await vi.advanceTimersByTimeAsync(600)
 
     // Entry should be removed by interval cleanup
     const result = await store.get('interval-key')

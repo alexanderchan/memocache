@@ -26,7 +26,11 @@ describe('CacheError', () => {
   it('should include cause in toString if provided', () => {
     const cause = new CacheError({ key: 'inner', message: 'inner error' })
     // BaseError accepts cause; cast opts to pass it through
-    const outer = new CacheError({ key: 'outer', message: 'outer error', cause } as any)
+    const outer = new CacheError({
+      key: 'outer',
+      message: 'outer error',
+      cause,
+    } as any)
     const str = outer.toString()
     expect(str).toContain('inner error')
   })

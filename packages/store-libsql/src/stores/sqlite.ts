@@ -38,7 +38,9 @@ export function createSqliteStore({
 }: SqliteStoreConfig = {}): SqliteStore {
   // Validate tableName to prevent SQL injection
   if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(tableName)) {
-    throw new Error(`Invalid tableName: "${tableName}". Only alphanumeric characters and underscores are allowed.`)
+    throw new Error(
+      `Invalid tableName: "${tableName}". Only alphanumeric characters and underscores are allowed.`,
+    )
   }
 
   let cleanupIntervalId: NodeJS.Timeout

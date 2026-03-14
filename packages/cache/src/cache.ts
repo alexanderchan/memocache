@@ -243,7 +243,9 @@ export const createCache = ({
     const key = hashKey(queryKey)
     const stores = await getStores()
     await Promise.allSettled(
-      stores.map((store) => store.set(key, { value, age: Date.now() }, ttl ?? defaultTTL)),
+      stores.map((store) =>
+        store.set(key, { value, age: Date.now() }, ttl ?? defaultTTL),
+      ),
     )
   }
 
