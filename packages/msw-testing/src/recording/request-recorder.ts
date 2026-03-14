@@ -15,7 +15,7 @@ export interface RequestLogItem {
 		responseBody?: string
 		responseJson?: unknown
 		statusText?: string
-		type?: HttpResponse['type']
+		type?: HttpResponse<string>['type']
 	}
 }
 
