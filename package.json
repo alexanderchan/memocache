@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "prepare": "husky",
     "ci": "turbo run ci",
+    "test:ci": "pnpm run ci",
     "build": "turbo build",
     "test": "turbo run test",
     "docs": "pnpm run --filter '*docs' dev",
@@ -31,6 +33,7 @@
     "commander": "^14.0.3",
     "@inquirer/prompts": "^8.3.0",
     "@types/node": "^25.5.0",
+    "husky": "^9.1.7",
     "tsx": "^4.21.0",
     "turbo": "^2.8.17",
     "zx": "^8.8.5"
