@@ -10,6 +10,7 @@ This package provides a flexible and extensible caching solution for Node.js app
 ## Features
 
 - Multiple storage backend support (e.g., in-memory TTL store, Redis, SQLite)
+- Automatic promotion/backfill into higher-priority stores after a fresh lower-tier hit
 - Configurable TTL (Time-To-Live) for cache entries
 - Automatic background revalidation of stale data
 - Function memoization with automatic cache key generation `const cachedFunction = createCachedFunction(anyFunction)` with automatic typed arguments and return values
@@ -62,7 +63,9 @@ console.log(await cachedFetchSomething('example')) // fetchSomething is not call
 
 2. If the data exists in the store, we check if it is stale we return the value in the store and then call the function to get the fresh data.
 
-3. If the data is past it's time to live it will be expired from the store
+3. If a fresh hit is found in a lower-priority store, the value is asynchronously backfilled into higher-priority stores.
+
+4. If the data is past it's time to live it will be expired from the store
 
 ![A diagram of how the caching works](https://raw.githubusercontent.com/alexanderchan/memocache/refs/heads/main/docs/src/assets/overview-diagram-1.svg)
 
@@ -129,7 +132,7 @@ function doSomething({ id, name }) {
 }
 ```
 
-With this method it's easy to wrap a function and have it read/write from multiple stores.
+With this method it's easy to wrap a function and have it read/write from multiple stores. When a lower-priority store returns a fresh hit, memocache will also promote that value back into earlier stores in the background so subsequent reads can hit the faster tiers.
 
 ## API Reference
 
