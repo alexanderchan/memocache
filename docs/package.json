@@ -4,26 +4,22 @@
   "private": true,
   "version": "0.0.1",
   "scripts": {
-    "dev": "pnpm run copyreadme && astro dev",
+    "dev": "astro dev",
     "start": "astro dev",
     "docs": "astro dev",
     "generate:diagrams": "docker run --rm -u `id -u`:`id -g` -v ./src/assets:/data minlag/mermaid-cli -i overview-diagram.md -o overview-diagram.svg",
-    "copyreadme": "tsx scripts/copy-readmes.ts",
-    "build": "pnpm run copyreadme && astro check && astro build",
+    "build": "astro check && astro build",
     "preview": "astro preview",
     "astro": "astro"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.7",
-    "@astrojs/starlight": "^0.37.7",
-    "@astrojs/starlight-tailwind": "^4.0.2",
+    "@astrojs/starlight": "^0.38.1",
+    "@astrojs/starlight-tailwind": "^5.0.0",
     "@tailwindcss/vite": "^4.2.1",
-    "astro": "^5.18.1",
+    "astro": "^6.0.4",
     "sharp": "^0.34.5",
     "tailwindcss": "^4.2.1",
     "typescript": "^5.9.3"
-  },
-  "devDependencies": {
-    "tsx": "^4.21.0"
   }
 }

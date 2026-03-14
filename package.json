@@ -4,33 +4,46 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "prepare": "husky",
     "ci": "turbo run ci",
+    "test:ci": "pnpm run ci",
     "build": "turbo build",
     "test": "turbo run test",
+    "lint:staged": "lint-staged",
     "docs": "pnpm run --filter '*docs' dev",
-    "format:root": "prettier \"**/*.{ts,tsx,md,js,json}\" --check --cache",
-    "format:fix": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "format": "biome format --write .",
+    "check": "biome check .",
+    "check:fix": "biome check --write .",
     "typecheck": "turbo run typecheck",
     "release:view": "gh pr list --app github-actions --web",
     "release:pr": "tsx ./scripts/merge-changeset-pr.ts",
     "release:local": "pnpm run build && changeset version && changeset publish",
     "release": "pnpm run build && pnpm release:local && git push --follow-tags",
-    "lint": "turbo run lint"
+    "lint": "turbo run lint",
+    "test:coverage": "turbo run coverage"
   },
   "keywords": [],
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@changesets/cli": "^2.27.9",
-    "prettier": "^3.3.3"
+    "@changesets/cli": "^2.30.0"
   },
   "devDependencies": {
-    "@commander-js/extra-typings": "^12.1.0",
-    "@inquirer/prompts": "^7.0.0",
-    "@types/node": "^22.7.4",
-    "tsx": "^4.19.1",
-    "turbo": "^2.1.3",
-    "zx": "^8.1.9"
+    "@biomejs/biome": "^2.4.7",
+    "@commander-js/extra-typings": "^14.0.0",
+    "commander": "^14.0.3",
+    "@inquirer/prompts": "^8.3.0",
+    "@types/node": "^25.5.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.6",
+    "tsx": "^4.21.0",
+    "turbo": "^2.8.17",
+    "zx": "^8.8.5"
   },
-  "packageManager": "pnpm@9.12.1"
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,json,md}": [
+      "biome check --write --no-errors-on-unmatched"
+    ]
+  },
+  "packageManager": "pnpm@10.32.1"
 }

@@ -23,18 +23,18 @@
       "cache": false,
       "persistent": true
     },
-    "format": {
-      "dependsOn": ["^format"]
-    },
     "lint": {
       "dependsOn": []
     },
     "lint:fix": {
       "dependsOn": []
     },
-    "//#format:root": {},
+    "//#check": {},
+    "coverage": {
+      "dependsOn": ["^build"]
+    },
     "ci": {
-      "dependsOn": ["^ci", "typecheck", "test", "//#format:root", "lint"]
+      "dependsOn": ["^ci", "typecheck", "test", "//#check", "lint"]
     }
   }
 }

@@ -17,9 +17,7 @@ A utility library for [Mock Service Worker (MSW)](https://mswjs.io/) that provid
 ## Installation
 
 ```bash
-npm install @alexmchan/msw-testing msw prettier
-# or
-yarn add @alexmchan/msw-testing msw prettier
+pnpm add -D @alexmchan/msw-testing msw prettier
 ```
 
 ## Usage

@@ -18,20 +18,35 @@ export default defineConfig({
       },
       sidebar: [
         {
-          label: 'Docs',
+          label: 'Guides',
           items: [
-            // Each item here is one entry in the navigation menu.
-            { label: 'Usage', slug: 'guides/usage' },
+            { label: 'Getting Started', slug: 'guides/getting-started' },
+          ],
+        },
+        {
+          label: 'Concepts',
+          items: [
+            { label: 'How It Works', slug: 'concepts/how-it-works' },
+          ],
+        },
+        {
+          label: 'Reference',
+          items: [
+            { label: 'API Reference', slug: 'reference/api' },
+            { label: 'Stores', slug: 'reference/stores' },
+            { label: 'Middleware', slug: 'reference/middleware' },
+          ],
+        },
+        {
+          label: 'Advanced',
+          items: [
+            { label: 'Serverless Context', slug: 'advanced/serverless-context' },
           ],
         },
         {
           label: 'Testing',
           items: [{ label: 'MSW Testing', slug: 'testing/msw-testing' }],
         },
-        // {
-        //   label: 'Reference',
-        //   autogenerate: { directory: 'reference' },
-        // },
       ],
       customCss: ['./src/tailwind.css'],
       favicon: '/favicon.ico',

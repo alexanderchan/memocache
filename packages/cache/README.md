@@ -10,6 +10,7 @@ This package provides a flexible and extensible caching solution for Node.js app
 ## Features
 
 - Multiple storage backend support (e.g., in-memory TTL store, Redis, SQLite)
+- Automatic promotion/backfill into higher-priority stores after a fresh lower-tier hit
 - Configurable TTL (Time-To-Live) for cache entries
 - Automatic background revalidation of stale data
 - Function memoization with automatic cache key generation `const cachedFunction = createCachedFunction(anyFunction)` with automatic typed arguments and return values
@@ -23,12 +24,17 @@ pnpm install @alexmchan/memocache
 
 ## Usage
 
-### Basic Usage with TTL Store
+### Basic Usage with In-Memory TTL Store
+
+The default store is an **in-memory TTL (Time-To-Live) cache** — entries are held in process memory and automatically expire after a configurable duration. This is the simplest setup: no external services required, zero latency, perfect for single-server apps or development.
+
+> **Memory note:** The store caps at 3,000,000 entries by count, not by byte size. Memory usage depends on the size of your cached values. Small objects like user profiles, roles, and permission checks are ideal — a few hundred bytes each means millions of entries fit comfortably in a typical Node.js process. Avoid caching large payloads (e.g. full HTML, binary data) in the TTL store without reducing the entry cap accordingly.
 
 ```typescript
 import { createCache, createTTLStore } from '@alexmchan/memocache'
 import { Time } from '@alexmchan/memocache'
 
+// Items live in memory for up to 5 minutes, then are evicted automatically
 const store = createTTLStore({
   defaultTTL: 5 * Time.Minute,
 })
@@ -59,7 +65,9 @@ console.log(await cachedFetchSomething('example')) // fetchSomething is not call
 
 2. If the data exists in the store, we check if it is stale we return the value in the store and then call the function to get the fresh data.
 
-3. If the data is past it's time to live it will be expired from the store
+3. If a fresh hit is found in a lower-priority store, the value is asynchronously backfilled into higher-priority stores.
+
+4. If the data is past it's time to live it will be expired from the store
 
 ![A diagram of how the caching works](https://raw.githubusercontent.com/alexanderchan/memocache/refs/heads/main/docs/src/assets/overview-diagram-1.svg)
 
@@ -97,7 +105,7 @@ const { createCachedFunction } = createCache({
 // Create a cached version of a function
 const cachedFunction = createCachedFunction(async ({ id, name }) => {
   // some expensive operation or fetch
-  return `Result for ${arg}`
+  return `Result for ${id} and ${name}`
 })
 
 // The old way without memocache to help
@@ -126,7 +134,7 @@ function doSomething({ id, name }) {
 }
 ```
 
-With this method it's easy to wrap a function and have it read/write from multiple stores.
+With this method it's easy to wrap a function and have it read/write from multiple stores. When a lower-priority store returns a fresh hit, memocache will also promote that value back into earlier stores in the background so subsequent reads can hit the faster tiers.
 
 ## API Reference
 
@@ -138,6 +146,18 @@ Creates a new cache instance.
 - `options.defaultTTL`: Default Time-To-Live for cache entries
 - `options.defaultFresh`: Revalidate stale data after this time
 - `options.context`: (Optional) A custom context for managing async operations
+
+#### `fresh` vs `ttl` mental model
+
+```
+Timeline: [0 ─── fresh ─── ttl ─── ∞]
+  [0, fresh]   → serve from cache (no revalidation)
+  [fresh, ttl] → serve stale data + revalidate in background
+  [ttl, ∞]     → cache miss, fetch fresh data
+```
+
+- **`fresh`** (`defaultFresh`): How long cached data is considered fresh. Within this window, the cached value is returned immediately with no background fetch.
+- **`ttl`** (`defaultTTL`): How long cached data is kept at all. Between `fresh` and `ttl`, stale data is served while a background revalidation runs. Past `ttl`, the entry is expired and fresh data must be fetched.
 
 Returns an object with the following methods:
 
@@ -162,17 +182,38 @@ Creates a memoized version of a function.
 Executes a cache query with a specific set of keys. This resembles the `useQuery` api. As an added bonus, the react-query [eslint plugin](https://tanstack.com/query/latest/docs/eslint/eslint-plugin-query) will also help validate that external values are included in the querykey.
 
 ```ts
-
 function exampleFunction({ storeId, customerId }) {
-
- return cacheQuery({
+  return cacheQuery({
     queryKey: ['/items', { storeId, customerId }],
-    queryFn: async fetch() {
-        return fetchItems({ storeId,customerId })
+    queryFn: async () => {
+      return fetchItems({ storeId, customerId })
     },
   })
 }
+```
 
+### `invalidate({ queryKey: any[] })`
+
+Removes data from all cache stores for the given query key.
+
+```ts
+await cache.invalidate({ queryKey: ['/items', { storeId, customerId }] })
+```
+
+### `setCacheData({ queryKey, value, ttl? })`
+
+Manually sets data in all cache stores, wrapped in the `{ value, age }` envelope expected by `cacheQuery`.
+
+- `queryKey`: The cache key array
+- `value`: The value to store
+- `ttl` (optional): Time-To-Live in milliseconds
+
+```ts
+await cache.setCacheData({
+  queryKey: ['/items', { storeId }],
+  value: cachedItems,
+  ttl: 5 * Time.Minute,
+})
 ```
 
 ### Invalidating a Cache Entry
@@ -369,32 +410,32 @@ To be tested implementation of a cache flushing waitable context:
 /*--------------------------------------------------**/
 
 function createSimpleContext() {
-  waitables: Promise<unknown>[] = []
+  const waitables: Promise<unknown>[] = []
   const context = {
     waitables,
     waitUntil(p) {
-      waitables.push(p);
+      waitables.push(p)
 
       if (waitables.length > 1000) {
-        this.flushCache();
+        this.flushCache()
       }
     },
 
     async flushCache() {
-      await Promise.allSettled(waitables);
-      waitables.length = 0;
+      await Promise.allSettled(waitables)
+      waitables.length = 0
     },
 
     [Symbol.asyncDispose]() {
-      return this.flushCache();
-    }
-  };
+      return this.flushCache()
+    },
+  }
 
-  return context;
+  return context
 }
 
 async function handler(event, context) {
-  using simpleContext = new SimpleContext()
+  using simpleContext = createSimpleContext()
   using cache = createCache({
     stores: [store],
     context: simpleContext,
@@ -481,7 +522,7 @@ export const memoizedFn = createCachedFunction(exampleFn)
 
 // good, doesn't require any function hashing
 const memoizedFn = createCachedFunction(exampleFn, {
-  options: { cachePrefix: '/api/todos' },
+  cachePrefix: '/api/todos',
 })
 ```
 
@@ -496,14 +537,12 @@ import { cacheQuery } from 'your/path/to/cache'
 
 function exampleGetItems() {
   return cacheQuery({
-    queryKey: ['/items', {customerId, storeId}],
-    queryFn: async fetch() {
-        return fetchItems({ storeId })
+    queryKey: ['/items', { customerId, storeId }],
+    queryFn: async () => {
+      return fetchItems({ storeId })
     },
   })
 }
-
-
 ```
 
 Note that a similar behaviour could be achieved to add additional keys by wrapping the the memoized function with the extra keys needed to invalidate the cache.
