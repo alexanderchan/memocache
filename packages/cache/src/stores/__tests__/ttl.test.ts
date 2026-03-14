@@ -106,6 +106,28 @@ describe('TTL Cache', () => {
 		expect(undefinedResult).toBeUndefined()
 		expect(nullResult).toBeNull()
 	})
+
+	it('should clear all entries', async () => {
+		const store = createTTLStore({ defaultTTL: 60 * Time.Second })
+		store.set('a', 'v1', 5000)
+		store.set('b', 'v2', 5000)
+
+		expect(await store.get('a')).toBe('v1')
+		await store.clear?.()
+		expect(await store.get('a')).toBeUndefined()
+		expect(await store.get('b')).toBeUndefined()
+	})
+
+	it('should throw in production environment', async () => {
+		const store = createTTLStore({ defaultTTL: 60 * Time.Second })
+		const original = process.env.NODE_ENV
+		process.env.NODE_ENV = 'production'
+		try {
+			await expect(store.entries()).rejects.toThrow('not allowed in production')
+		} finally {
+			process.env.NODE_ENV = original
+		}
+	})
 })
 
 describe('createCache with no default params', () => {

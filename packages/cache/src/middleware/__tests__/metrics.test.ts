@@ -1,4 +1,5 @@
 import type { CacheStore } from '@alexmchan/memocache-common'
+import { Time } from '@alexmchan/memocache-common'
 import {
 	afterEach,
 	beforeEach,
@@ -9,6 +10,7 @@ import {
 	vi,
 } from 'vitest'
 
+import { createTTLStore } from '@/stores/ttl'
 import { createMetricsStore } from '../metrics'
 
 // Define a type that extends CacheStore with mock functions
@@ -138,5 +140,27 @@ describe('Metrics Middleware', () => {
 				latency: 100,
 			}),
 		)
+	})
+
+	it('should call dispose on the underlying store', async () => {
+		const mockDispose = vi.fn().mockResolvedValue(undefined)
+		const storeWithDispose = {
+			...createTTLStore({ defaultTTL: 5 * Time.Minute }),
+			dispose: mockDispose,
+		}
+		const metricsStore = createMetricsStore({ store: storeWithDispose })
+		await metricsStore.dispose()
+		expect(mockDispose).toHaveBeenCalledTimes(1)
+	})
+
+	it('should support Symbol.asyncDispose', async () => {
+		const mockDispose = vi.fn().mockResolvedValue(undefined)
+		const storeWithDispose = {
+			...createTTLStore({ defaultTTL: 5 * Time.Minute }),
+			dispose: mockDispose,
+		}
+		const metricsStore = createMetricsStore({ store: storeWithDispose })
+		await metricsStore[Symbol.asyncDispose]()
+		expect(mockDispose).toHaveBeenCalledTimes(1)
 	})
 })

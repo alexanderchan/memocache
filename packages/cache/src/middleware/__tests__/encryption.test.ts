@@ -125,4 +125,14 @@ describe('Encrypted TTL Cache', () => {
 		expect(undefinedResult).toBeUndefined()
 		expect(nullResult).toBeNull()
 	})
+
+	it('should throw if key is shorter than 8 characters', () => {
+		expect(() =>
+			createEncryptedStore({
+				store: createTTLStore({ defaultTTL: 5 * Time.Minute }),
+				key: 'short',
+				salt: 'anysalt',
+			})
+		).toThrow('Key must be at least 8 characters long')
+	})
 })

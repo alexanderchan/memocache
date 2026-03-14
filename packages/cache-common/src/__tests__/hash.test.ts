@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { hashKey, hashString } from '@/hash'
+import { hashKey, hashString, isPlainArray, isPlainObject } from '@/hash'
 
 describe('hashKey function', () => {
 	it('should hash a simple query key', () => {
@@ -45,5 +45,51 @@ describe('hashString function', () => {
 		const result1 = await hashString('input1')
 		const result2 = await hashString('input2')
 		expect(result1).not.toBe(result2)
+	})
+})
+
+describe('isPlainObject', () => {
+	it('returns true for plain objects', () => {
+		expect(isPlainObject({})).toBe(true)
+		expect(isPlainObject({ a: 1 })).toBe(true)
+	})
+
+	it('returns false for arrays', () => {
+		expect(isPlainObject([])).toBe(false)
+	})
+
+	it('returns false for null', () => {
+		expect(isPlainObject(null)).toBe(false)
+	})
+
+	it('returns false for class instances with modified prototype', () => {
+		class Foo {}
+		expect(isPlainObject(new Foo())).toBe(false)
+	})
+
+	it('returns true for objects with no constructor (Object.create(null))', () => {
+		expect(isPlainObject(Object.create(null))).toBe(true)
+	})
+
+	it('returns false for objects with a constructor whose prototype lacks isPrototypeOf', () => {
+		function Custom(this: any) {}
+		// Set Custom.prototype to a plain {} and point constructor back to Custom.
+		// hasObjectPrototype({}) is true, but Object.hasOwn({}, 'isPrototypeOf') is
+		// false (isPrototypeOf lives on Object.prototype, not on a plain {}).
+		const proto: any = {}
+		proto.constructor = Custom
+		Custom.prototype = proto
+		expect(isPlainObject(new (Custom as any)())).toBe(false)
+	})
+})
+
+describe('isPlainArray', () => {
+	it('returns true for a normal array', () => {
+		expect(isPlainArray([1, 2, 3])).toBe(true)
+	})
+
+	it('returns false for non-arrays', () => {
+		expect(isPlainArray({})).toBe(false)
+		expect(isPlainArray('string')).toBe(false)
 	})
 })

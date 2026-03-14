@@ -30,6 +30,9 @@
       "dependsOn": []
     },
     "//#check": {},
+    "coverage": {
+      "dependsOn": ["^build"]
+    },
     "ci": {
       "dependsOn": ["^ci", "typecheck", "test", "//#check", "lint"]
     }

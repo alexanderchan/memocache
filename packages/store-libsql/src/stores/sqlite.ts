@@ -149,6 +149,7 @@ export function createSqliteStore({
 			}, cleanupInterval)
 		},
 		clear: async () => {
+			await lazyInit()
 			await sqliteClient.execute(`DELETE FROM ${tableName}`)
 		},
 		cleanup,

@@ -44,13 +44,16 @@ const DEFAULT_FRESH = 30 * Time.Second // when data is fresh we don't revalidate
 const DEFAULT_TTL = 5 * Time.Minute // how long to keep data in cache
 
 export const createCache = ({
-	stores = [createTTLStore({ defaultTTL: DEFAULT_TTL })],
+	stores: storesProp,
 	getStoresAsync,
 	defaultTTL = DEFAULT_TTL,
 	defaultFresh = DEFAULT_FRESH,
 	logger = defaultLogger,
 	context,
 }: CacheOptions = {}) => {
+	// Only use the default in-memory store when no async store factory is provided
+	const stores =
+		storesProp ?? (!getStoresAsync ? [createTTLStore({ defaultTTL })] : undefined)
 	const _context = context || new DefaultStatefulContext()
 
 	const _stores: CacheStore[] = []

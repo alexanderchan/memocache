@@ -285,7 +285,7 @@ describe('cacheQuery', () => {
 	})
 
 	it('should have good types', async () => {
-		const _res = await cache.cacheQuery({
+		const res = await cache.cacheQuery({
 			queryKey: ['test-error'],
 			queryFn: async () => {
 				return {
@@ -293,6 +293,56 @@ describe('cacheQuery', () => {
 				}
 			},
 		})
+		// type check: res.data exists, res.doesNotExist should not
+		void res?.data
+		// @ts-expect-error This property should not exist
+		void res?.doesNotExist
+	})
+
+	it('should expose getCacheKey for debugging', async () => {
+		function myFn(_arg: string) { return 'result' }
+		const cached = cache.createCachedFunction(myFn)
+
+		const key1 = await cached.getCacheKey('hello')
+		const key2 = await cached.getCacheKey('hello')
+		const key3 = await cached.getCacheKey('world')
+
+		// same args → same key
+		expect(key1).toBe(key2)
+		// different args → different key
+		expect(key1).not.toBe(key3)
+		// key is a non-empty string
+		expect(typeof key1).toBe('string')
+		expect(key1.length).toBeGreaterThan(0)
+	})
+})
+
+describe('revalidateInBackground error handling', () => {
+	it('should log error and not throw when queryFn rejects during revalidation', async () => {
+		const errorLogger = vi.fn()
+		const mockLogger = { error: errorLogger, log: vi.fn(), warn: vi.fn(), debug: vi.fn(), info: vi.fn() }
+
+		const store = createTTLStore({ defaultTTL: 5 * Time.Minute })
+		const testCache = createCache({ stores: [store], logger: mockLogger })
+
+		const queryKey = ['revalidate-error-test']
+
+		// seed stale data so revalidateInBackground is triggered
+		await store.set(hashKey(queryKey), {
+			value: 'stale',
+			age: Date.now() - 1 * Time.Hour,
+		})
+
+		const queryFn = vi.fn().mockRejectedValue(new Error('upstream failure'))
+
+		// should return stale data without throwing
+		const result = await testCache.cacheQuery({ queryFn, queryKey })
+		expect(result).toBe('stale')
+
+		// give background revalidation time to fail
+		await new Promise((resolve) => setTimeout(resolve, 20))
+
+		expect(errorLogger).toHaveBeenCalled()
 	})
 })
 

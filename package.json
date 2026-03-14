@@ -16,7 +16,8 @@
     "release:pr": "tsx ./scripts/merge-changeset-pr.ts",
     "release:local": "pnpm run build && changeset version && changeset publish",
     "release": "pnpm run build && pnpm release:local && git push --follow-tags",
-    "lint": "turbo run lint"
+    "lint": "turbo run lint",
+    "test:coverage": "turbo run coverage"
   },
   "keywords": [],
   "author": "",

@@ -7,9 +7,10 @@ import superjson from 'superjson'
 // and this will be the most common use case
 const encryptMemoized = memoizeLast(
 	encrypt,
-	// approximately 4x faster than the encryption
-	(lastValue, value) =>
-		superjson.stringify(lastValue) === superjson.stringify(value),
+	// Compare only the data argument (index 0); CryptoKey serializes as {} with
+	// superjson so comparing it would make all keys appear equal.
+	(lastArgs, newArgs) =>
+		superjson.stringify(lastArgs[0]) === superjson.stringify(newArgs[0]),
 )
 
 export function createEncryptedStore({
