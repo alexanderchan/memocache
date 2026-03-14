@@ -13,8 +13,8 @@
   "scripts": {
     "build": "tsup-node",
     "build:watch": "yarn run build --watch",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint": "biome check .",
+    "lint:fix": "biome check --write ."
   },
   "repository": {
     "url": "git@github.com/alexanderchan/memocache.git"
@@ -24,8 +24,6 @@
     "prettier": ">=3.0.0"
   },
   "devDependencies": {
-    "@repo/eslint-config": "workspace:^",
-    "eslint": "^10.0.3",
     "msw": "^2.12.10",
     "prettier": "^3.8.1",
     "tsup": "^8.5.1"

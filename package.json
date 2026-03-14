@@ -8,8 +8,9 @@
     "build": "turbo build",
     "test": "turbo run test",
     "docs": "pnpm run --filter '*docs' dev",
-    "format:root": "prettier \"**/*.{ts,tsx,md,js,json}\" --check --cache",
-    "format:fix": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "format": "biome format --write .",
+    "check": "biome check .",
+    "check:fix": "biome check --write .",
     "typecheck": "turbo run typecheck",
     "release:view": "gh pr list --app github-actions --web",
     "release:pr": "tsx ./scripts/merge-changeset-pr.ts",
@@ -21,10 +22,10 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@changesets/cli": "^2.30.0",
-    "prettier": "^3.8.1"
+    "@changesets/cli": "^2.30.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.0.0",
     "@commander-js/extra-typings": "^14.0.0",
     "commander": "^14.0.0",
     "@inquirer/prompts": "^8.3.0",

@@ -4,10 +4,8 @@
   "private": false,
   "dependencies": {},
   "devDependencies": {
-    "@repo/eslint-config": "workspace:^",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.57.0",
     "vite-tsconfig-paths": "^6.1.1",
     "@vitest/coverage-v8": "^4.1.0",
     "vitest": "^4.1.0"
@@ -24,8 +22,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "coverage": "vitest run --coverage",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
     "test:watch": "vitest --watch"
   },
   "type": "module",
