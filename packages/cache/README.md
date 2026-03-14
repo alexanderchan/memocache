@@ -23,12 +23,15 @@ pnpm install @alexmchan/memocache
 
 ## Usage
 
-### Basic Usage with TTL Store
+### Basic Usage with In-Memory TTL Store
+
+The default store is an **in-memory TTL (Time-To-Live) cache** — entries are held in process memory and automatically expire after a configurable duration. This is the simplest setup: no external services required, zero latency, perfect for single-server apps or development.
 
 ```typescript
 import { createCache, createTTLStore } from '@alexmchan/memocache'
 import { Time } from '@alexmchan/memocache'
 
+// Items live in memory for up to 5 minutes, then are evicted automatically
 const store = createTTLStore({
   defaultTTL: 5 * Time.Minute,
 })

@@ -95,6 +95,7 @@ export const createCache = ({
 	}): Promise<T | undefined> {
 		let result = null
 		let isFresh = false
+		let hitStoreIndex = -1
 		const key = hashKey(queryKey)
 
 		const localOptions = {
@@ -105,10 +106,11 @@ export const createCache = ({
 
 		const _stores = await getStores()
 
-		for (const store of _stores) {
+		for (const [index, store] of _stores.entries()) {
 			result = await store.get(key)
 
 			if (result) {
+				hitStoreIndex = index
 				const age = result.age ? Date.now() - result.age : 0
 
 				if (age < localOptions.fresh) {
@@ -119,6 +121,17 @@ export const createCache = ({
 		}
 
 		if (isFresh) {
+			if (hitStoreIndex > 0) {
+				backfillHigherPriorityStores({
+					stores: _stores.slice(0, hitStoreIndex),
+					key,
+					value: result,
+					ttl: getRemainingTTL({
+						age: result?.age,
+						ttl: localOptions.ttl,
+					}),
+				})
+			}
 			return result?.value // Data is fresh, return from cache
 		}
 
@@ -156,6 +169,43 @@ export const createCache = ({
 		} finally {
 			revalidating.delete(key)
 		}
+	}
+
+	function getRemainingTTL({
+		age,
+		ttl,
+	}: {
+		age: number | undefined
+		ttl: number
+	}) {
+		if (!age) {
+			return ttl
+		}
+
+		const remainingTTL = ttl - (Date.now() - age)
+		return Math.max(remainingTTL, 1)
+	}
+
+	function backfillHigherPriorityStores({
+		stores,
+		key,
+		value,
+		ttl,
+	}: {
+		stores: CacheStore[]
+		key: string
+		value: { value: unknown; age?: number }
+		ttl: number
+	}) {
+		if (stores.length === 0) {
+			return
+		}
+
+		const backfillPromise = Promise.allSettled(
+			stores.map((store) => store.set(key, value, ttl)),
+		)
+
+		_context.waitUntil(backfillPromise)
 	}
 
 	const revalidateInBackground = async ({

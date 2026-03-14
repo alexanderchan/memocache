@@ -1,4 +1,8 @@
-import { hashKey, Time } from '@alexmchan/memocache-common'
+import {
+	DefaultStatefulContext,
+	hashKey,
+	Time,
+} from '@alexmchan/memocache-common'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createCache } from '@/cache'
@@ -117,6 +121,56 @@ describe('cacheQuery', () => {
 
 		expect(result1?.value).toBe('new data')
 		expect(result2?.value).toBe('new data')
+	})
+
+	it('should backfill higher priority stores when a lower priority store has a fresh hit', async () => {
+		const store1 = createTTLStore({ defaultTTL: 5 * Time.Minute })
+		const store2 = createTTLStore({ defaultTTL: 5 * Time.Minute })
+		const context = new DefaultStatefulContext()
+		const multiCache = createCache({ stores: [store1, store2], context })
+
+		const queryFn = vi.fn().mockResolvedValue('new data')
+		const queryKey = ['test-backfill']
+		const key = hashKey(queryKey)
+
+		await store2.set(key, {
+			value: 'cached data',
+			age: Date.now(),
+		})
+
+		const result = await multiCache.cacheQuery({ queryFn, queryKey })
+		await context.flush()
+
+		expect(result).toBe('cached data')
+		expect(queryFn).not.toHaveBeenCalled()
+		expect((await store1.get(key))?.value).toBe('cached data')
+	})
+
+	it('should not backfill stale lower priority hits before revalidation completes', async () => {
+		const store1 = createTTLStore({ defaultTTL: 5 * Time.Minute })
+		const store2 = createTTLStore({ defaultTTL: 5 * Time.Minute })
+		const multiCache = createCache({ stores: [store1, store2] })
+
+		const queryFn = vi.fn().mockImplementation(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 20))
+			return 'fresh data'
+		})
+		const queryKey = ['test-stale-backfill']
+		const key = hashKey(queryKey)
+
+		await store2.set(key, {
+			value: 'stale data',
+			age: Date.now() - 1 * Time.Hour,
+		})
+
+		const result = await multiCache.cacheQuery({ queryFn, queryKey })
+
+		expect(result).toBe('stale data')
+		expect(await store1.get(key)).toBeUndefined()
+
+		await new Promise((resolve) => setTimeout(resolve, 40))
+
+		expect((await store1.get(key))?.value).toBe('fresh data')
 	})
 
 	it('should respect custom TTL', async () => {
