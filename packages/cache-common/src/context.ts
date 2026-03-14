@@ -3,16 +3,17 @@ export interface Context {
 }
 
 export class DefaultStatefulContext implements Context {
-  lastPromise: Promise<unknown> = Promise.resolve()
+  private promises: Promise<unknown>[] = []
 
   public waitUntil<TPromise = unknown>(_p: Promise<TPromise>) {
     // a placeholder for an actual implementation of waitUtil that would be provided by the runtime environment
     // https://vercel.com/docs/functions/edge-middleware/middleware-api#waituntil
-    this.lastPromise = _p
+    this.promises.push(_p)
   }
 
   async flush() {
-    await this.lastPromise
+    await Promise.allSettled(this.promises)
+    this.promises = []
   }
 
   [Symbol.asyncDispose]() {

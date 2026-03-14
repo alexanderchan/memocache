@@ -262,6 +262,29 @@ describe('cacheQuery', () => {
     expect(workFunction).toHaveBeenCalledTimes(2)
   })
 
+  it('should track store writes via context.waitUntil on cache miss', async () => {
+    const waitUntilMock = vi.fn()
+    const mockContext = { waitUntil: waitUntilMock }
+    const testCache = createCache({ stores: [store], context: mockContext })
+
+    const queryFn = vi.fn().mockResolvedValue('data')
+    await testCache.cacheQuery({ queryFn, queryKey: ['ctx-test'] })
+
+    expect(waitUntilMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('should work with no arguments (uses defaults)', async () => {
+    const defaultCache = createCache()
+    const queryFn = vi.fn().mockResolvedValue('default result')
+    const result = await defaultCache.cacheQuery({
+      queryFn,
+      queryKey: ['default-test'],
+    })
+    expect(result).toBe('default result')
+    expect(queryFn).toHaveBeenCalledTimes(1)
+    await defaultCache.dispose()
+  })
+
   it('should have good types', async () => {
     const res = await cache.cacheQuery({
       queryKey: ['test-error'],
@@ -493,7 +516,7 @@ describe('setCacheData', () => {
 
     // Verify data exists in store
     const result = await store.get(hashKey(queryKey))
-    expect(result).toEqual(value)
+    expect(result?.value).toEqual(value)
   })
 
   it('should work with multiple stores', async () => {
@@ -510,8 +533,8 @@ describe('setCacheData', () => {
     // Verify data exists in both stores
     const result1 = await store1.get(hashKey(queryKey))
     const result2 = await store2.get(hashKey(queryKey))
-    expect(result1).toEqual(value)
-    expect(result2).toEqual(value)
+    expect(result1?.value).toEqual(value)
+    expect(result2?.value).toEqual(value)
   })
 
   it('should overwrite existing data', async () => {
@@ -529,21 +552,19 @@ describe('setCacheData', () => {
     expect(result?.value).toBe('initial data')
 
     // Overwrite with new data
-    const newValue = { value: 'updated data', age: Date.now() }
-    await cache.setCacheData({ queryKey, value: newValue })
+    await cache.setCacheData({ queryKey, value: 'updated data' })
 
     // Verify data was updated
     result = await store.get(key)
-    expect(result).toEqual(newValue)
+    expect(result?.value).toBe('updated data')
   })
 
   it('should allow retrieving set data with cacheQuery', async () => {
     const queryKey = ['test-retrieve']
-    const value = { value: 'retrievable data', age: Date.now() }
     const queryFn = vi.fn().mockResolvedValue('should not be called')
 
     // Set data in cache
-    await cache.setCacheData({ queryKey, value })
+    await cache.setCacheData({ queryKey, value: 'retrievable data' })
 
     // Retrieve with cacheQuery
     const result = await cache.cacheQuery({ queryFn, queryKey })
@@ -566,6 +587,38 @@ describe('setCacheData', () => {
 
     // Verify data exists in store
     const result = await store.get(hashKey(complexQueryKey))
-    expect(result).toEqual(value)
+    expect(result?.value).toEqual(value)
+  })
+})
+
+describe('dispose', () => {
+  it('should call dispose on all stores', async () => {
+    const mockDispose = vi.fn().mockResolvedValue(undefined)
+    const mockStore = {
+      name: 'mock',
+      get: vi.fn().mockResolvedValue(undefined),
+      set: vi.fn().mockResolvedValue(undefined),
+      delete: vi.fn().mockResolvedValue(undefined),
+      dispose: mockDispose,
+      [Symbol.asyncDispose]: vi.fn().mockResolvedValue(undefined),
+    }
+    const testCache = createCache({ stores: [mockStore] })
+    await testCache.dispose()
+    expect(mockDispose).toHaveBeenCalledTimes(1)
+  })
+
+  it('should support Symbol.asyncDispose', async () => {
+    const mockDispose = vi.fn().mockResolvedValue(undefined)
+    const mockStore = {
+      name: 'mock',
+      get: vi.fn().mockResolvedValue(undefined),
+      set: vi.fn().mockResolvedValue(undefined),
+      delete: vi.fn().mockResolvedValue(undefined),
+      dispose: mockDispose,
+      [Symbol.asyncDispose]: vi.fn().mockResolvedValue(undefined),
+    }
+    const testCache = createCache({ stores: [mockStore] })
+    await testCache[Symbol.asyncDispose]()
+    expect(mockDispose).toHaveBeenCalledTimes(1)
   })
 })

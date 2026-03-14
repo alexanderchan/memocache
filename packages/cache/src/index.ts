@@ -3,9 +3,9 @@ export * from '@/error'
 export * from '@/middleware'
 export * from '@/stores/index'
 
-import type { Context, Logger, QueryKey } from '@alexmchan/memocache-common'
+import type { CacheStore, Context, Logger, QueryKey } from '@alexmchan/memocache-common'
 
-export type { Context, Logger, QueryKey }
+export type { CacheStore, Context, Logger, QueryKey }
 
 import {
   defaultLogger,

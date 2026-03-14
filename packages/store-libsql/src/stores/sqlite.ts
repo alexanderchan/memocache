@@ -36,6 +36,11 @@ export function createSqliteStore({
   cleanupInterval = 5 * Time.Minute,
   logger = defaultLogger,
 }: SqliteStoreConfig = {}): SqliteStore {
+  // Validate tableName to prevent SQL injection
+  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(tableName)) {
+    throw new Error(`Invalid tableName: "${tableName}". Only alphanumeric characters and underscores are allowed.`)
+  }
+
   let cleanupIntervalId: NodeJS.Timeout
   let hasInitializedDb = false
 

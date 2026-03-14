@@ -56,11 +56,10 @@ export const createRedisStore = ({
     },
     async dispose() {
       const client = await getRedisClient()
-      await client.disconnect()
       await client.quit()
     },
     async [Symbol.asyncDispose]() {
-      this.dispose?.()
+      await this.dispose?.()
     },
   } satisfies CacheStore
 }

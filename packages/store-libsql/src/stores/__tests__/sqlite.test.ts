@@ -121,3 +121,58 @@ describe('TTL Cache', () => {
     expect(nullResult).toBeNull()
   })
 })
+
+describe('SQLite tableName validation', () => {
+  it('should throw on invalid tableName', () => {
+    expect(() => createSqliteStore({ tableName: 'my; DROP TABLE cache;--' })).toThrow()
+    expect(() => createSqliteStore({ tableName: 'valid_table_name' })).not.toThrow()
+  })
+})
+
+describe('SQLite cleanup interval', () => {
+  it('should remove expired entries during cleanup', async () => {
+    vi.useFakeTimers()
+    const store = createSqliteStore({ defaultTTL: 1000 })
+
+    // Set an entry
+    await store.set('cleanup-key', { value: 'data', age: Date.now() }, 100)
+
+    // Advance time past TTL
+    vi.advanceTimersByTime(200)
+
+    // Run cleanup manually
+    await store.cleanup()
+
+    // Entry should be gone
+    const result = await store.get('cleanup-key')
+    expect(result).toBeUndefined()
+
+    vi.useRealTimers()
+    await store.dispose?.()
+  })
+
+  it('startCleanupInterval triggers periodic cleanup', async () => {
+    vi.useFakeTimers()
+    const cleanupIntervalMs = 500
+    const store = createSqliteStore({
+      defaultTTL: 1000,
+      cleanupInterval: cleanupIntervalMs,
+    })
+
+    // Set an entry that expires quickly
+    await store.set('interval-key', { value: 'data', age: Date.now() }, 100)
+
+    // Advance time past TTL and cleanup interval
+    vi.advanceTimersByTime(600)
+
+    // Give async cleanup a chance to run
+    await vi.runAllTimersAsync()
+
+    // Entry should be removed by interval cleanup
+    const result = await store.get('interval-key')
+    expect(result).toBeUndefined()
+
+    vi.useRealTimers()
+    await store.dispose?.()
+  })
+})

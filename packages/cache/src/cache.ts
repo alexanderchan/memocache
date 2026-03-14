@@ -50,47 +50,31 @@ export const createCache = ({
   defaultFresh = DEFAULT_FRESH,
   logger = defaultLogger,
   context,
-}: CacheOptions) => {
+}: CacheOptions = {}) => {
   const _context = context || new DefaultStatefulContext()
 
-  if (!stores && !getStoresAsync) {
-    throw new CacheError({
-      key: 'stores',
-      message: 'No stores provided',
-    })
-  }
-
   const _stores: CacheStore[] = []
-  let hasInitialized = false
+  let initPromise: Promise<CacheStore[]> | undefined
   const revalidating = new Map<string, Promise<any>>()
 
   async function getStores(): Promise<CacheStore[]> {
-    if (hasInitialized) {
-      return _stores
-    }
-
-    if (stores) {
-      _stores.push(...stores)
-      hasInitialized = true
-      return _stores
-    }
-
-    if (getStoresAsync) {
-      try {
-        _stores.push(...(await getStoresAsync()))
-      } catch {
-        logger.error(
-          new CacheError({
-            key: 'stores',
-            message: 'Failed to get stores',
-          }),
-        )
+    return (initPromise ??= (async () => {
+      if (stores) {
+        _stores.push(...stores)
+      } else if (getStoresAsync) {
+        try {
+          _stores.push(...(await getStoresAsync()))
+        } catch {
+          logger.error(
+            new CacheError({
+              key: 'stores',
+              message: 'Failed to get stores',
+            }),
+          )
+        }
       }
-    }
-
-    hasInitialized = true
-
-    return _stores
+      return _stores
+    })())
   }
 
   async function cacheQuery<T = unknown>({
@@ -107,9 +91,9 @@ export const createCache = ({
     const key = hashKey(queryKey)
 
     const localOptions = {
+      ...options,
       ttl: options?.ttl ?? defaultTTL,
       fresh: options?.fresh ?? defaultFresh,
-      ...options,
     }
 
     const _stores = await getStores()
@@ -159,7 +143,7 @@ export const createCache = ({
       )
 
       // kick off the store updates in the background
-      context?.waitUntil?.(writeToStoresPromise)
+      _context.waitUntil(writeToStoresPromise)
 
       return newData
     } finally {
@@ -196,9 +180,9 @@ export const createCache = ({
         ),
       )
 
-      const storesUpdatedResults = await storesUpdatedResultsPromise
-
       _context.waitUntil(storesUpdatedResultsPromise)
+
+      const storesUpdatedResults = await storesUpdatedResultsPromise
 
       // If any store failed to update, log the error
       storesUpdatedResults.forEach((storeResult) => {
@@ -250,13 +234,17 @@ export const createCache = ({
   const setCacheData = async ({
     queryKey,
     value,
+    ttl,
   }: {
     queryKey: any[]
     value: any
+    ttl?: number
   }) => {
     const key = hashKey(queryKey)
     const stores = await getStores()
-    await Promise.allSettled(stores.map((store) => store.set(key, value)))
+    await Promise.allSettled(
+      stores.map((store) => store.set(key, { value, age: Date.now() }, ttl ?? defaultTTL)),
+    )
   }
 
   //  a memoize function that uses the function.toString() to generate a key
