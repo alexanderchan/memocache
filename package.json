@@ -9,6 +9,7 @@
     "test:ci": "pnpm run ci",
     "build": "turbo build",
     "test": "turbo run test",
+    "lint:staged": "lint-staged",
     "docs": "pnpm run --filter '*docs' dev",
     "format": "biome format --write .",
     "check": "biome check .",
@@ -34,9 +35,15 @@
     "@inquirer/prompts": "^8.3.0",
     "@types/node": "^25.5.0",
     "husky": "^9.1.7",
+    "lint-staged": "^16.2.6",
     "tsx": "^4.21.0",
     "turbo": "^2.8.17",
     "zx": "^8.8.5"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,json}": [
+      "biome check --write --no-errors-on-unmatched"
+    ]
   },
   "packageManager": "pnpm@10.32.1"
 }

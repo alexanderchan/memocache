@@ -25,10 +25,17 @@ If you only need to install the hooks for the current clone, you can run:
 pnpm exec husky
 ```
 
-You can verify the pre-push hook is installed with:
+You can verify the hooks are installed with:
 
 ```sh
+ls -l .git/hooks/pre-commit
 ls -l .git/hooks/pre-push
+```
+
+The pre-commit hook runs:
+
+```sh
+pnpm lint:staged
 ```
 
 The pre-push hook runs:
