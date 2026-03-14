@@ -1,7 +1,7 @@
 #!/usr/bin/env zx
+import { Command } from '@commander-js/extra-typings'
 // @ts-check
 import { input } from '@inquirer/prompts'
-import { Command } from '@commander-js/extra-typings'
 import { $ } from 'zx'
 
 // echo out the command being executed
@@ -60,7 +60,9 @@ async function main() {
 		console.info('publishing all packages')
 		console.info('-----------------------------------------')
 		const otp = await input({ message: 'npm 2FA OTP code:' })
-		await $({ env: { ...process.env, NPM_CONFIG_OTP: otp } })`pnpm changeset publish`
+		await $({
+			env: { ...process.env, NPM_CONFIG_OTP: otp },
+		})`pnpm changeset publish`
 		await $`git push --follow-tags --set-upstream origin ${branchName}`
 
 		// create PR
