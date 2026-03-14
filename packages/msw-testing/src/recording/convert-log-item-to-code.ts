@@ -37,7 +37,7 @@ export async function convertLogItemToCode({
 }: {
   requestLogItem: RequestLogItem
 }) {
-  let responseCode = ''
+  let responseCode: string
 
   if (requestLogItem.response.responseJson) {
     responseCode = `HttpResponse.json(${JSON.stringify(requestLogItem.response.responseJson, null, 2)}, { status: ${requestLogItem.response.status}, headers: ${JSON.stringify(requestLogItem.response.headers, null, 2)} })`

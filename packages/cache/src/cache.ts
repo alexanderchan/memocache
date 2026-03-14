@@ -85,7 +85,7 @@ export const createCache = ({
     queryFn: () => Promise<T>
     queryKey: QueryKey
     options?: CacheQueryOptions
-  }): Promise<T> {
+  }): Promise<T | undefined> {
     let result = null
     let isFresh = false
     const key = hashKey(queryKey)
@@ -271,12 +271,12 @@ export const createCache = ({
 
     async function cachedFunction(
       ...args: Parameters<T>
-    ): Promise<ReturnType<T>> {
+    ): Promise<ReturnType<T> | undefined> {
       // we delay the generation of the cache key until the first call
       // so that we can call createCachedFunction syncrhonously
 
       const cachePrefix = await getCachePrefix()
-      return cacheQuery({
+      return cacheQuery<ReturnType<T>>({
         queryFn: () => fn(...args),
         queryKey: [cachePrefix, args],
         options,
@@ -290,6 +290,11 @@ export const createCache = ({
     }
 
     cachedFunction.getCachePrefix = getCachePrefix
+
+    cachedFunction.getCacheKey = async (...args: Parameters<T>) => {
+      const cachePrefix = await getCachePrefix()
+      return hashKey([cachePrefix, args])
+    }
 
     return cachedFunction
   }

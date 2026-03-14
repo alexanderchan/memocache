@@ -1,5 +1,5 @@
 import { CacheStore } from '@alexmchan/memocache-common'
-import TTLCache from '@isaacs/ttlcache'
+import { TTLCache } from '@isaacs/ttlcache'
 
 export function createTTLStore({
   ttlCache: ttlCacheProp,

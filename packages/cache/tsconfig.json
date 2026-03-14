@@ -8,7 +8,7 @@
     "vitest.config.mjs",
     "../cache-common/src/context.ts"
   ],
-  "exclude": ["node_modules", "./dist", "build"],
+  "exclude": ["node_modules", "./dist", "build", "src/__tests__/benchmarks.ts"],
   "compilerOptions": {
     "rootDir": "./",
     "paths": {
