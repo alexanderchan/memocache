@@ -300,7 +300,9 @@ describe('cacheQuery', () => {
 	})
 
 	it('should expose getCacheKey for debugging', async () => {
-		function myFn(_arg: string) { return 'result' }
+		function myFn(_arg: string) {
+			return 'result'
+		}
 		const cached = cache.createCachedFunction(myFn)
 
 		const key1 = await cached.getCacheKey('hello')
@@ -320,7 +322,13 @@ describe('cacheQuery', () => {
 describe('revalidateInBackground error handling', () => {
 	it('should log error and not throw when queryFn rejects during revalidation', async () => {
 		const errorLogger = vi.fn()
-		const mockLogger = { error: errorLogger, log: vi.fn(), warn: vi.fn(), debug: vi.fn(), info: vi.fn() }
+		const mockLogger = {
+			error: errorLogger,
+			log: vi.fn(),
+			warn: vi.fn(),
+			debug: vi.fn(),
+			info: vi.fn(),
+		}
 
 		const store = createTTLStore({ defaultTTL: 5 * Time.Minute })
 		const testCache = createCache({ stores: [store], logger: mockLogger })

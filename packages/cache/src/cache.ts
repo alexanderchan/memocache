@@ -53,7 +53,8 @@ export const createCache = ({
 }: CacheOptions = {}) => {
 	// Only use the default in-memory store when no async store factory is provided
 	const stores =
-		storesProp ?? (!getStoresAsync ? [createTTLStore({ defaultTTL })] : undefined)
+		storesProp ??
+		(!getStoresAsync ? [createTTLStore({ defaultTTL })] : undefined)
 	const _context = context || new DefaultStatefulContext()
 
 	const _stores: CacheStore[] = []

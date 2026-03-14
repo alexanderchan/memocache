@@ -132,7 +132,7 @@ describe('Encrypted TTL Cache', () => {
 				store: createTTLStore({ defaultTTL: 5 * Time.Minute }),
 				key: 'short',
 				salt: 'anysalt',
-			})
+			}),
 		).toThrow('Key must be at least 8 characters long')
 	})
 })
