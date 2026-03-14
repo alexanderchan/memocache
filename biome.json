@@ -1,0 +1,70 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.4.7/schema.json",
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
+	"files": {
+		"ignoreUnknown": true,
+		"includes": [
+			"packages/**/*",
+			"config/**/*",
+			"scripts/**/*",
+			"!**/dist",
+			"!**/node_modules",
+			"!**/coverage",
+			"!**/build",
+			"!docs"
+		]
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab"
+	},
+	"assist": {
+		"actions": {
+			"source": {
+				"organizeImports": "on"
+			}
+		}
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": true,
+			"suspicious": {
+				"noFocusedTests": "error",
+				"noConsole": "error",
+				"noExplicitAny": "off"
+			}
+		}
+	},
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "single",
+			"semicolons": "asNeeded"
+		}
+	},
+	"overrides": [
+		{
+			"includes": [
+				"scripts/**/*",
+				"packages/**/examples/**",
+				"packages/**/__tests__/benchmarks*",
+				"packages/msw-testing/src/recording/**",
+				"packages/msw-testing/src/handlers/**",
+				"**/logger.ts",
+				"**/*.test.ts",
+				"**/*.spec.ts"
+			],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noConsole": "off"
+					}
+				}
+			}
+		}
+	]
+}

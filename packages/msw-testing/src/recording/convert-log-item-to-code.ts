@@ -1,6 +1,6 @@
 import * as prettier from 'prettier'
 
-import { RequestLogItem } from './request-recorder'
+import type { RequestLogItem } from './request-recorder'
 /**
  * Converts a request log item to a code string that represents an MSW (Mock Service Worker) handler.
  *
@@ -33,25 +33,25 @@ import { RequestLogItem } from './request-recorder'
  * // })
  */
 export async function convertLogItemToCode({
-  requestLogItem,
+	requestLogItem,
 }: {
-  requestLogItem: RequestLogItem
+	requestLogItem: RequestLogItem
 }) {
-  let responseCode: string
+	let responseCode: string
 
-  if (requestLogItem.response.responseJson) {
-    responseCode = `HttpResponse.json(${JSON.stringify(requestLogItem.response.responseJson, null, 2)}, { status: ${requestLogItem.response.status}, headers: ${JSON.stringify(requestLogItem.response.headers, null, 2)} })`
-  } else {
-    responseCode = `HttpResponse.text(\`${requestLogItem.response.responseBody}\`, { status: ${requestLogItem.response.status}, headers: ${JSON.stringify(requestLogItem.response.headers, null, 2)}})`
-  }
+	if (requestLogItem.response.responseJson) {
+		responseCode = `HttpResponse.json(${JSON.stringify(requestLogItem.response.responseJson, null, 2)}, { status: ${requestLogItem.response.status}, headers: ${JSON.stringify(requestLogItem.response.headers, null, 2)} })`
+	} else {
+		responseCode = `HttpResponse.text(\`${requestLogItem.response.responseBody}\`, { status: ${requestLogItem.response.status}, headers: ${JSON.stringify(requestLogItem.response.headers, null, 2)}})`
+	}
 
-  const mswMockCode = `
+	const mswMockCode = `
     http.${requestLogItem.request.method?.toLowerCase()}("${requestLogItem.request.url}", async () => {
       return ${responseCode}
     })`
 
-  return await prettier.format(mswMockCode, {
-    parser: 'typescript',
-    semi: false,
-  })
+	return await prettier.format(mswMockCode, {
+		parser: 'typescript',
+		semi: false,
+	})
 }

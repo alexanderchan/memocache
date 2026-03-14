@@ -1,6 +1,6 @@
-import { dirname } from 'path'
+import { dirname } from 'node:path'
 
-import { RequestLogItem } from '@/recording/request-recorder'
+import type { RequestLogItem } from '@/recording/request-recorder'
 
 let appendFileSync: typeof import('fs').appendFileSync
 let existsSync: typeof import('fs').existsSync
@@ -19,43 +19,43 @@ let writeFileSync: typeof import('fs').writeFileSync
  * logger('requestString', requestLogItem);
  */
 export async function createMswFileLogger({
-  filenameWithPath = process.cwd() + '/tmp/msw-recorder.ts',
+	filenameWithPath = `${process.cwd()}/tmp/msw-recorder.ts`,
 } = {}) {
-  if (typeof (global as any).window !== 'undefined') {
-    throw new Error(
-      'createMswFileLogger can only be used in a Node.js environment',
-    )
-  }
+	if (typeof (global as any).window !== 'undefined') {
+		throw new Error(
+			'createMswFileLogger can only be used in a Node.js environment',
+		)
+	}
 
-  // Dynamically import 'fs' module so that we can also import this module in the browser more easily
-  const fs = await import('fs')
-  appendFileSync = fs.appendFileSync
-  existsSync = fs.existsSync
-  mkdirSync = fs.mkdirSync
-  writeFileSync = fs.writeFileSync
+	// Dynamically import 'fs' module so that we can also import this module in the browser more easily
+	const fs = await import('node:fs')
+	appendFileSync = fs.appendFileSync
+	existsSync = fs.existsSync
+	mkdirSync = fs.mkdirSync
+	writeFileSync = fs.writeFileSync
 
-  console.info(`🔴 Appending MSW requests to ${filenameWithPath}`)
+	console.info(`🔴 Appending MSW requests to ${filenameWithPath}`)
 
-  // check if the file exists, if not create it
-  try {
-    const dir = dirname(filenameWithPath)
-    if (!existsSync(dir)) {
-      mkdirSync(dir, { recursive: true })
-    }
+	// check if the file exists, if not create it
+	try {
+		const dir = dirname(filenameWithPath)
+		if (!existsSync(dir)) {
+			mkdirSync(dir, { recursive: true })
+		}
 
-    if (!existsSync(filenameWithPath)) {
-      writeFileSync(filenameWithPath, '')
-    }
-  } catch (e) {
-    console.error('Error creating file', e)
-  }
+		if (!existsSync(filenameWithPath)) {
+			writeFileSync(filenameWithPath, '')
+		}
+	} catch (e) {
+		console.error('Error creating file', e)
+	}
 
-  return (requestString: string, requestLogItem: RequestLogItem) => {
-    try {
-      appendFileSync(filenameWithPath, requestString + ',\n')
-    } catch (e) {
-      console.error('Error writing to file', e)
-      console.info(requestString, requestLogItem)
-    }
-  }
+	return (requestString: string, requestLogItem: RequestLogItem) => {
+		try {
+			appendFileSync(filenameWithPath, `${requestString},\n`)
+		} catch (e) {
+			console.error('Error writing to file', e)
+			console.info(requestString, requestLogItem)
+		}
+	}
 }

@@ -1,49 +1,49 @@
 {
-  "name": "@alexmchan/memocache",
-  "version": "0.10.0",
-  "private": false,
-  "dependencies": {
-    "@isaacs/ttlcache": "^2.1.4",
-    "@libsql/client": "^0.17.0",
-    "just-memoize-last": "^3.2.0",
-    "superjson": "^2.2.6",
-    "@alexmchan/memocache-common": "workspace:^"
-  },
-  "devDependencies": {
-    "@arethetypeswrong/cli": "^0.18.2",
-    "@testcontainers/redis": "^11.12.0",
-    "ioredis": "^5.10.0",
-    "testcontainers": "^11.12.0",
-    "tsup": "^8.5.1",
-    "typescript": "^5.9.3",
-    "vite-tsconfig-paths": "^6.1.1",
-    "@vitest/coverage-v8": "^4.1.0",
-    "vitest": "^4.1.0"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/alexmchan/memocache"
-  },
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
-  },
-  "scripts": {
-    "build": "tsup",
-    "check-exports": "yarn pack --out ./ignore-package.tgz && yarn attw ./ignore-package.tgz && rm ./ignore-package.tgz",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "coverage": "vitest run --coverage",
-    "lint": "biome check .",
-    "lint:fix": "biome check --write .",
-    "test:watch": "vitest --watch"
-  },
-  "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "default": "./dist/index.cjs"
-    }
-  }
+	"name": "@alexmchan/memocache",
+	"version": "0.10.0",
+	"private": false,
+	"dependencies": {
+		"@isaacs/ttlcache": "^2.1.4",
+		"@libsql/client": "^0.17.0",
+		"just-memoize-last": "^3.2.0",
+		"superjson": "^2.2.6",
+		"@alexmchan/memocache-common": "workspace:^"
+	},
+	"devDependencies": {
+		"@arethetypeswrong/cli": "^0.18.2",
+		"@testcontainers/redis": "^11.12.0",
+		"ioredis": "^5.10.0",
+		"testcontainers": "^11.12.0",
+		"tsup": "^8.5.1",
+		"typescript": "^5.9.3",
+		"vite-tsconfig-paths": "^6.1.1",
+		"@vitest/coverage-v8": "^4.1.0",
+		"vitest": "^4.1.0"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/alexmchan/memocache"
+	},
+	"publishConfig": {
+		"registry": "https://npm.pkg.github.com"
+	},
+	"scripts": {
+		"build": "tsup",
+		"check-exports": "yarn pack --out ./ignore-package.tgz && yarn attw ./ignore-package.tgz && rm ./ignore-package.tgz",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run",
+		"coverage": "vitest run --coverage",
+		"lint": "biome check .",
+		"lint:fix": "biome check --write .",
+		"test:watch": "vitest --watch"
+	},
+	"type": "module",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"exports": {
+		".": {
+			"import": "./dist/index.js",
+			"default": "./dist/index.cjs"
+		}
+	}
 }

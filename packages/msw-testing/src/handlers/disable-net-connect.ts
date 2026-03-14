@@ -9,6 +9,6 @@ import { http } from 'msw'
  * @throws Will throw an error if no matching request handler is found.
  */
 export const disableNetConnectHandler = http.all('*', async ({ request }) => {
-  console.error('No matching request handler found for ' + request.url)
-  throw new Error('No matching request handler found for ' + request.url)
+	console.error(`No matching request handler found for ${request.url}`)
+	throw new Error(`No matching request handler found for ${request.url}`)
 })
