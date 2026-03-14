@@ -28,6 +28,8 @@ pnpm install @alexmchan/memocache
 
 The default store is an **in-memory TTL (Time-To-Live) cache** — entries are held in process memory and automatically expire after a configurable duration. This is the simplest setup: no external services required, zero latency, perfect for single-server apps or development.
 
+> **Memory note:** The store caps at 3,000,000 entries by count, not by byte size. Memory usage depends on the size of your cached values. Small objects like user profiles, roles, and permission checks are ideal — a few hundred bytes each means millions of entries fit comfortably in a typical Node.js process. Avoid caching large payloads (e.g. full HTML, binary data) in the TTL store without reducing the entry cap accordingly.
+
 ```typescript
 import { createCache, createTTLStore } from '@alexmchan/memocache'
 import { Time } from '@alexmchan/memocache'
