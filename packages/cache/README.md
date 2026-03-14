@@ -608,3 +608,4 @@ Redis store average time: 0.241ms // Redis on localhost
 SQLite disk store average time: 0.531ms // SQLite on disk
 Upstash redis from local to remote: 118.711ms // Redis on upstash over https from local -- hopefully faster from aws?
 ```
+
