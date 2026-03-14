@@ -63,10 +63,11 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Install, build, and upload your site output
-        uses: withastro/action@v3
+        uses: withastro/action@v5
         with:
           package-manager: pnpm
           path: ./docs
+          node-version: lts/*
 
   deploy:
     needs: build
