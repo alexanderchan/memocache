@@ -11,6 +11,8 @@ import {
 	Time,
 } from '@alexmchan/memocache-common'
 
+import { TTLCache } from '@isaacs/ttlcache'
+
 import { createTTLStore } from '@/stores'
 
 import { CacheError } from './error/cache-error'
@@ -28,7 +30,7 @@ interface CacheQueryOptions {
 	retry?: number | false
 	/** Delay between retries in ms, or a function of (attempt, error) => ms. Default: exponential backoff capped at 30s */
 	retryDelay?: number | RetryDelayFn
-	/** AbortSignal to cancel the in-flight queryFn and stop retrying. In the dedup case, aborting the first caller's signal cancels the shared fetch and rejects other callers sharing the same promise. */
+	/** AbortSignal to cancel this caller's wait. If the signal fires, this caller rejects immediately via raceWithSignal, but the underlying fetch continues so other concurrent callers sharing the same dedup promise are unaffected. */
 	signal?: AbortSignal
 }
 interface CacheOptions {
@@ -74,7 +76,12 @@ export const createCache = ({
 	const _stores: CacheStore[] = []
 	let initPromise: Promise<CacheStore[]> | undefined
 	const revalidating = new Map<string, Promise<any>>()
-	const keyRegistry = new Map<string, QueryKey>()
+	// Bounded registry mapping hashed keys → original QueryKey for partial invalidation.
+	// TTLCache auto-evicts entries when their TTL expires, preventing unbounded growth.
+	const keyRegistry = new TTLCache<string, QueryKey>({
+		max: 10_000,
+		ttl: defaultTTL,
+	})
 
 	function getRetryDelay(
 		attempt: number,
@@ -229,7 +236,9 @@ export const createCache = ({
 		if (isFresh) {
 			// Register in keyRegistry so partial invalidation can find this key even if it
 			// was populated by a previous process and never went through cacheQuery's miss path.
-			keyRegistry.set(key, queryKey)
+			keyRegistry.set(key, queryKey, {
+				ttl: getRemainingTTL({ age: result?.age, ttl: localOptions.ttl }),
+			})
 			if (hitStoreIndex > 0) {
 				backfillHigherPriorityStores({
 					stores: _stores.slice(0, hitStoreIndex),
@@ -259,19 +268,11 @@ export const createCache = ({
 
 		// No data in cache, fetch from the source.
 		//
-		// The caller's signal is linked to an internal AbortController so that aborting
-		// actually cancels the queryFn and stops the retry loop. In the dedup case
-		// (another caller joins while a fetch is in-flight), they share the same promise:
-		// if the first caller's signal aborts the fetch, other callers sharing the promise
-		// will also receive the error.
+		// An internal AbortController is created and its signal is passed to queryFn so
+		// queryFn can react to cancellation. However, the controller is NOT linked to the
+		// caller's signal — aborting one caller only rejects that caller (via raceWithSignal)
+		// and leaves the shared dedup promise running for any other concurrent callers.
 		const controller = new AbortController()
-		let cleanupSignalLink: (() => void) | undefined
-		if (localOptions.signal) {
-			const onAbort = () => controller.abort(localOptions.signal?.reason)
-			localOptions.signal.addEventListener('abort', onAbort, { once: true })
-			cleanupSignalLink = () =>
-				localOptions.signal?.removeEventListener('abort', onAbort)
-		}
 
 		// If this key is already being fetched, join the existing promise instead of
 		// starting a new one. Individual callers race the shared promise against their own signal.
@@ -282,7 +283,7 @@ export const createCache = ({
 
 		// Register the key before the fetch so partial invalidation can evict stale data
 		// even if the fetch eventually fails.
-		keyRegistry.set(key, queryKey)
+		keyRegistry.set(key, queryKey, { ttl: localOptions.ttl })
 
 		// Build the shared promise that handles the fetch, store writes, and dedup cleanup.
 		// The cleanup lives inside p.finally() so it runs regardless of whether callers
@@ -290,7 +291,6 @@ export const createCache = ({
 		const p = executeWithRetry(() => queryFn({ signal: controller.signal }), {
 			retry: localOptions.retry,
 			retryDelay: localOptions.retryDelay,
-			signal: localOptions.signal,
 		})
 			.then(async (newData) => {
 				const writeToStoresPromise = Promise.allSettled(
@@ -306,7 +306,6 @@ export const createCache = ({
 				return newData
 			})
 			.finally(() => {
-				cleanupSignalLink?.()
 				revalidating.delete(key)
 			})
 
@@ -373,7 +372,7 @@ export const createCache = ({
 		const effectiveRetry = retry !== undefined ? retry : defaultRetry
 		// Register the key before the fetch so partial invalidation can evict stale data
 		// even if the background fetch fails.
-		keyRegistry.set(queryKey, originalQueryKey)
+		keyRegistry.set(queryKey, originalQueryKey, { ttl })
 		try {
 			const existing = revalidating.get(queryKey)
 			if (existing) {
@@ -482,7 +481,7 @@ export const createCache = ({
 		ttl?: number
 	}) => {
 		const key = hashKey(queryKey)
-		keyRegistry.set(key, queryKey)
+		keyRegistry.set(key, queryKey, { ttl: ttl ?? defaultTTL })
 		const stores = await getStores()
 		await Promise.allSettled(
 			stores.map((store) =>

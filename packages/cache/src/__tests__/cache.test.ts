@@ -925,42 +925,70 @@ describe('AbortSignal', () => {
 		expect(Date.now() - start).toBeLessThan(500)
 	})
 
-	it('should clean up deduplication map after abort so subsequent fetches retry', async () => {
+	it('should not cancel shared fetch when one concurrent caller aborts', async () => {
 		const cache = createCache({ stores: [store], defaultRetry: false })
 		const controller = new AbortController()
 
-		// queryFn that respects the signal (aborts when controller fires)
-		const queryFn = vi.fn().mockImplementation(
-			({ signal }: { signal: AbortSignal } = {} as any) =>
-				new Promise<string>((_, reject) => {
-					signal?.addEventListener('abort', () =>
-						reject(new DOMException('Aborted', 'AbortError')),
-					)
-				}),
-		)
+		// Short-running fetch shared between two concurrent callers
+		const queryFn = vi
+			.fn()
+			.mockImplementation(
+				() =>
+					new Promise<string>((resolve) => setTimeout(resolve, 50, 'shared')),
+			)
 
-		const promise = cache.cacheQuery({
+		const p1 = cache.cacheQuery({
 			queryFn,
+			queryKey: ['dedup-abort'],
+			options: { signal: controller.signal },
+		})
+		const p2 = cache.cacheQuery({ queryFn, queryKey: ['dedup-abort'] })
+
+		// Abort the first caller only
+		controller.abort()
+
+		// p1 rejects immediately, p2 still receives the result
+		await expect(p1).rejects.toThrow()
+		await expect(p2).resolves.toBe('shared')
+
+		// queryFn was called once — dedup still worked
+		expect(queryFn).toHaveBeenCalledTimes(1)
+	})
+
+	it('should clean up dedup map after fetch settles (underlying fetch runs to completion)', async () => {
+		const cache = createCache({ stores: [store], defaultRetry: false })
+		const controller = new AbortController()
+
+		// Short-running fetch — resolves after a small delay
+		const queryFn1 = vi
+			.fn()
+			.mockImplementation(
+				() =>
+					new Promise<string>((resolve) =>
+						setTimeout(resolve, 50, 'bg-result'),
+					),
+			)
+
+		// Abort the caller immediately; the underlying fetch continues
+		const promise = cache.cacheQuery({
+			queryFn: queryFn1,
 			queryKey: ['a4'],
 			options: { signal: controller.signal },
 		})
-
-		// Aborting cancels both the caller (via raceWithSignal) and the underlying fetch
-		// (via the linked controller → queryFn's signal)
 		controller.abort()
 		await expect(promise).rejects.toThrow()
 
-		// Allow p.finally() to run and clean up the dedup map
-		await new Promise((resolve) => setTimeout(resolve, 0))
+		// Wait for the underlying fetch to complete and write to the store
+		await new Promise((resolve) => setTimeout(resolve, 100))
 
-		// Subsequent call (no signal) triggers a fresh fetch now that dedup map is cleared
-		const queryFn2 = vi.fn().mockResolvedValue('fresh-result')
+		// Subsequent call should be served from cache (queryFn1's result was written)
+		const queryFn2 = vi.fn().mockResolvedValue('new')
 		const result = await cache.cacheQuery({
 			queryFn: queryFn2,
 			queryKey: ['a4'],
 		})
-		expect(result).toBe('fresh-result')
-		expect(queryFn2).toHaveBeenCalledTimes(1)
+		expect(result).toBe('bg-result')
+		expect(queryFn2).not.toHaveBeenCalled()
 	})
 })
 
