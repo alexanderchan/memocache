@@ -72,3 +72,19 @@ export function isPlainObject(o: any): o is object {
 export function isPlainArray(value: unknown) {
 	return Array.isArray(value) && value.length === Object.keys(value).length
 }
+
+/**
+ * Partial key matching — "b is a subset of a".
+ * Ported from TanStack Query: every key present in b must exist and match in a.
+ * Arrays are treated as objects (index keys), so ['todos'] matches ['todos', 5].
+ * https://github.com/TanStack/query/blob/main/packages/query-core/src/utils.ts
+ */
+export function partialMatchKey(a: QueryKey, b: QueryKey): boolean
+export function partialMatchKey(a: any, b: any): boolean {
+	if (a === b) return true
+	if (typeof a !== typeof b) return false
+	if (a && b && typeof a === 'object' && typeof b === 'object') {
+		return Object.keys(b).every((key) => partialMatchKey(a[key], b[key]))
+	}
+	return false
+}

@@ -16,6 +16,16 @@ At a high level, memocache checks cache stores in priority order, returns data i
 5. If a lower-priority store returns a fresh hit, memocache backfills higher-priority stores in the background.
 6. If the entry is past TTL, it is treated as expired and fresh data must be fetched.
 
+## Request deduplication
+
+If multiple requests for the same key arrive while a fetch is already in-flight (cache miss or background revalidation), they all await the same promise. `queryFn` is called once regardless of how many concurrent callers are waiting. This includes the retry loop — if a fetch is retrying, all concurrent callers share that retrying promise.
+
+## Retry
+
+When `queryFn` throws, memocache retries automatically with exponential backoff (default: 3 retries, 1s / 2s / 4s, capped at 30s). Retries can be configured per-query or globally on `createCache`. Pass `retry: false` to disable.
+
+Background revalidations also retry. If all retries are exhausted during a background revalidation, the error is logged and the stale value remains in the cache.
+
 ![A diagram of how the caching works](https://raw.githubusercontent.com/alexanderchan/memocache/refs/heads/main/docs/src/assets/overview-diagram-1.svg)
 
 ## `fresh` vs `ttl`

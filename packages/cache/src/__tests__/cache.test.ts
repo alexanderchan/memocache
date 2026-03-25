@@ -385,7 +385,11 @@ describe('revalidateInBackground error handling', () => {
 		}
 
 		const store = createTTLStore({ defaultTTL: 5 * Time.Minute })
-		const testCache = createCache({ stores: [store], logger: mockLogger })
+		const testCache = createCache({
+			stores: [store],
+			logger: mockLogger,
+			defaultRetry: false,
+		})
 
 		const queryKey = ['revalidate-error-test']
 
@@ -491,11 +495,15 @@ describe('request deduplication', () => {
 		const queryFn = vi.fn().mockRejectedValue(new Error('test error'))
 		const queryKey = ['test-error']
 
-		// First request should fail
-		await expect(cache.cacheQuery({ queryFn, queryKey })).rejects.toThrow()
+		// First request should fail (retry disabled so it fails immediately)
+		await expect(
+			cache.cacheQuery({ queryFn, queryKey, options: { retry: false } }),
+		).rejects.toThrow()
 
 		// Second request should trigger a new attempt
-		await expect(cache.cacheQuery({ queryFn, queryKey })).rejects.toThrow()
+		await expect(
+			cache.cacheQuery({ queryFn, queryKey, options: { retry: false } }),
+		).rejects.toThrow()
 
 		// Should have called queryFn twice since the first error should have cleaned up the dedup map
 		expect(queryFn).toHaveBeenCalledTimes(2)
@@ -693,6 +701,427 @@ describe('setCacheData', () => {
 		// Verify data exists in store
 		const result = await store.get(hashKey(complexQueryKey))
 		expect(result?.value).toEqual(value)
+	})
+})
+
+describe('retry', () => {
+	let store: ReturnType<typeof createTTLStore>
+
+	beforeEach(() => {
+		store = createTTLStore({ defaultTTL: 5 * Time.Minute })
+	})
+
+	afterEach(async () => {
+		await store?.clear?.()
+	})
+
+	it('should retry failed queryFn up to retry count and then throw', async () => {
+		const queryFn = vi.fn().mockRejectedValue(new Error('fail'))
+		const retryCache = createCache({ stores: [store] })
+
+		await expect(
+			retryCache.cacheQuery({
+				queryFn,
+				queryKey: ['r1'],
+				options: { retry: 2, retryDelay: 0 },
+			}),
+		).rejects.toThrow('fail')
+
+		expect(queryFn).toHaveBeenCalledTimes(3) // 1 initial + 2 retries
+
+		await retryCache.dispose()
+	})
+
+	it('should succeed if queryFn succeeds on 2nd attempt', async () => {
+		const cache = createCache({ stores: [store], defaultRetry: false })
+		let calls = 0
+		const queryFn = vi.fn().mockImplementation(async () => {
+			calls++
+			if (calls < 2) throw new Error('transient')
+			return 'recovered'
+		})
+
+		const result = await cache.cacheQuery({
+			queryFn,
+			queryKey: ['r2'],
+			options: { retry: 2, retryDelay: 0 },
+		})
+		expect(result).toBe('recovered')
+		expect(queryFn).toHaveBeenCalledTimes(2)
+	})
+
+	it('should not retry when retry is false', async () => {
+		const cache = createCache({ stores: [store], defaultRetry: false })
+		const queryFn = vi.fn().mockRejectedValue(new Error('fail'))
+
+		await expect(
+			cache.cacheQuery({ queryFn, queryKey: ['r3'] }),
+		).rejects.toThrow('fail')
+
+		expect(queryFn).toHaveBeenCalledTimes(1)
+	})
+
+	it('should support custom retryDelay function', async () => {
+		const cache = createCache({ stores: [store], defaultRetry: false })
+		const delays: number[] = []
+		const retryDelay = vi.fn().mockImplementation((attempt: number) => {
+			delays.push(attempt)
+			return 0
+		})
+		const queryFn = vi.fn().mockRejectedValue(new Error('fail'))
+
+		await expect(
+			cache.cacheQuery({
+				queryFn,
+				queryKey: ['r4'],
+				options: { retry: 2, retryDelay },
+			}),
+		).rejects.toThrow()
+
+		expect(retryDelay).toHaveBeenCalledTimes(2)
+		expect(delays).toEqual([0, 1])
+	})
+
+	it('should not call queryFn extra times when it succeeds on first try', async () => {
+		const cache = createCache({ stores: [store] })
+		const queryFn = vi.fn().mockResolvedValue('ok')
+
+		const result = await cache.cacheQuery({ queryFn, queryKey: ['r5'] })
+		expect(result).toBe('ok')
+		expect(queryFn).toHaveBeenCalledTimes(1)
+	})
+
+	it('should retry in revalidateInBackground and update stores on eventual success', async () => {
+		const cache = createCache({ stores: [store], defaultRetry: false })
+
+		await store.set(hashKey(['r6']), {
+			value: 'stale',
+			age: Date.now() - 1 * Time.Hour,
+		})
+
+		let calls = 0
+		const queryFn = vi.fn().mockImplementation(async () => {
+			calls++
+			if (calls < 2) throw new Error('transient')
+			return 'fresh'
+		})
+
+		const result = await cache.cacheQuery({
+			queryFn,
+			queryKey: ['r6'],
+			options: { retry: 2, retryDelay: 0 },
+		})
+		expect(result).toBe('stale')
+
+		await new Promise((resolve) => setTimeout(resolve, 50))
+
+		const updated = await store.get(hashKey(['r6']))
+		expect(updated?.value).toBe('fresh')
+	})
+
+	it('should deduplicate retried requests (concurrent callers share the retrying promise)', async () => {
+		const cache = createCache({ stores: [store], defaultRetry: false })
+		let calls = 0
+		const queryFn = vi.fn().mockImplementation(async () => {
+			calls++
+			if (calls < 2) throw new Error('transient')
+			return 'shared'
+		})
+
+		const [r1, r2, r3] = await Promise.all([
+			cache.cacheQuery({
+				queryFn,
+				queryKey: ['r7'],
+				options: { retry: 2, retryDelay: 5 },
+			}),
+			cache.cacheQuery({
+				queryFn,
+				queryKey: ['r7'],
+				options: { retry: 2, retryDelay: 5 },
+			}),
+			cache.cacheQuery({
+				queryFn,
+				queryKey: ['r7'],
+				options: { retry: 2, retryDelay: 5 },
+			}),
+		])
+
+		expect(queryFn).toHaveBeenCalledTimes(2) // 1 fail + 1 success
+		expect(r1).toBe('shared')
+		expect(r2).toBe('shared')
+		expect(r3).toBe('shared')
+	})
+})
+
+describe('AbortSignal', () => {
+	let store: ReturnType<typeof createTTLStore>
+
+	beforeEach(() => {
+		store = createTTLStore({ defaultTTL: 5 * Time.Minute })
+	})
+
+	afterEach(async () => {
+		await store?.clear?.()
+	})
+
+	it('should pass signal to queryFn', async () => {
+		const cache = createCache({ stores: [store], defaultRetry: false })
+		let receivedSignal: AbortSignal | undefined
+
+		const queryFn = vi
+			.fn()
+			.mockImplementation(async (ctx?: { signal: AbortSignal }) => {
+				receivedSignal = ctx?.signal
+				return 'ok'
+			})
+
+		await cache.cacheQuery({ queryFn, queryKey: ['a1'] })
+		expect(receivedSignal).toBeInstanceOf(AbortSignal)
+	})
+
+	it('should reject caller promptly when signal is aborted', async () => {
+		const cache = createCache({ stores: [store], defaultRetry: false })
+		const controller = new AbortController()
+
+		// Long-running fetch — the caller aborts before it completes
+		const queryFn = vi
+			.fn()
+			.mockImplementation(
+				() =>
+					new Promise<string>((resolve) => setTimeout(resolve, 5000, 'late')),
+			)
+
+		const resultPromise = cache.cacheQuery({
+			queryFn,
+			queryKey: ['a2'],
+			options: { signal: controller.signal },
+		})
+
+		controller.abort()
+
+		// Caller rejected immediately via raceWithSignal — no need to wait for the underlying fetch
+		await expect(resultPromise).rejects.toThrow()
+	})
+
+	it('should reject caller promptly when signal is aborted even during retry backoff', async () => {
+		const cache = createCache({ stores: [store], defaultRetry: false })
+		const controller = new AbortController()
+
+		const queryFn = vi.fn().mockRejectedValue(new Error('fail'))
+
+		const start = Date.now()
+		const resultPromise = cache.cacheQuery({
+			queryFn,
+			queryKey: ['a3'],
+			options: { retry: 3, retryDelay: 1000, signal: controller.signal },
+		})
+
+		// Abort while the retry backoff is in progress
+		await new Promise((resolve) => setTimeout(resolve, 20))
+		controller.abort()
+
+		await expect(resultPromise).rejects.toThrow()
+		// Caller rejected well before all retries would have finished (3s+ total)
+		expect(Date.now() - start).toBeLessThan(500)
+	})
+
+	it('should not abort other callers when one caller aborts (dedup safety)', async () => {
+		const cache = createCache({ stores: [store], defaultRetry: false })
+
+		let resolveQueryFn!: (value: string) => void
+		const queryFn = vi.fn().mockImplementation(
+			() =>
+				new Promise<string>((resolve) => {
+					resolveQueryFn = resolve
+				}),
+		)
+
+		const controller = new AbortController()
+
+		// Two concurrent callers — caller A has a signal, caller B does not
+		const promiseA = cache.cacheQuery({
+			queryFn,
+			queryKey: ['a3b'],
+			options: { signal: controller.signal },
+		})
+		const promiseB = cache.cacheQuery({ queryFn, queryKey: ['a3b'] })
+
+		// Caller A aborts
+		controller.abort()
+		await expect(promiseA).rejects.toThrow()
+
+		// Resolve the underlying fetch — caller B should still get the result
+		resolveQueryFn('result')
+		const resultB = await promiseB
+		expect(resultB).toBe('result')
+
+		// queryFn was only called once (dedup'd)
+		expect(queryFn).toHaveBeenCalledTimes(1)
+	})
+
+	it('should clean up deduplication map after underlying fetch completes', async () => {
+		const cache = createCache({ stores: [store], defaultRetry: false })
+
+		let resolveQueryFn!: (value: string) => void
+		const queryFn = vi.fn().mockImplementation(
+			() =>
+				new Promise<string>((resolve) => {
+					resolveQueryFn = resolve
+				}),
+		)
+
+		const controller = new AbortController()
+
+		const promise = cache.cacheQuery({
+			queryFn,
+			queryKey: ['a4'],
+			options: { signal: controller.signal },
+		})
+
+		// Caller aborts — rejected immediately via raceWithSignal
+		controller.abort()
+		await expect(promise).rejects.toThrow()
+
+		// Underlying fetch is still in progress — resolve it now
+		resolveQueryFn('background-result')
+		// Allow p.finally() to run and clean up the dedup map
+		await new Promise((resolve) => setTimeout(resolve, 0))
+
+		// Subsequent call gets the cached result (stored by the background fetch)
+		const queryFn2 = vi.fn().mockResolvedValue('should-not-be-called')
+		const result = await cache.cacheQuery({
+			queryFn: queryFn2,
+			queryKey: ['a4'],
+		})
+		expect(result).toBe('background-result')
+		expect(queryFn2).not.toHaveBeenCalled()
+	})
+})
+
+describe('partial key invalidation', () => {
+	let store: ReturnType<typeof createTTLStore>
+	let cache: ReturnType<typeof createCache>
+
+	beforeEach(() => {
+		store = createTTLStore({ defaultTTL: 5 * Time.Minute })
+		cache = createCache({ stores: [store], defaultRetry: false })
+	})
+
+	afterEach(async () => {
+		await store?.clear?.()
+	})
+
+	it('should default to exact match (backwards compatible)', async () => {
+		await cache.setCacheData({ queryKey: ['todos', 1], value: 'todo1' })
+		await cache.setCacheData({ queryKey: ['todos', 2], value: 'todo2' })
+
+		await cache.invalidate({ queryKey: ['todos', 1] })
+
+		expect(await store.get(hashKey(['todos', 1]))).toBeUndefined()
+		expect((await store.get(hashKey(['todos', 2])))?.value).toBe('todo2')
+	})
+
+	it('should match prefix keys when exact: false', async () => {
+		await cache.setCacheData({ queryKey: ['todos', 1], value: 'todo1' })
+		await cache.setCacheData({ queryKey: ['todos', 2], value: 'todo2' })
+		await cache.setCacheData({ queryKey: ['users', 1], value: 'user1' })
+
+		await cache.invalidate({ queryKey: ['todos'], exact: false })
+
+		expect(await store.get(hashKey(['todos', 1]))).toBeUndefined()
+		expect(await store.get(hashKey(['todos', 2]))).toBeUndefined()
+		expect((await store.get(hashKey(['users', 1])))?.value).toBe('user1')
+	})
+
+	it('should match partial objects when exact: false', async () => {
+		await cache.setCacheData({
+			queryKey: ['todos', { status: 'done', page: 1 }],
+			value: 'a',
+		})
+		await cache.setCacheData({
+			queryKey: ['todos', { status: 'done', page: 2 }],
+			value: 'b',
+		})
+		await cache.setCacheData({
+			queryKey: ['todos', { status: 'pending', page: 1 }],
+			value: 'c',
+		})
+
+		await cache.invalidate({
+			queryKey: ['todos', { status: 'done' }],
+			exact: false,
+		})
+
+		expect(
+			await store.get(hashKey(['todos', { status: 'done', page: 1 }])),
+		).toBeUndefined()
+		expect(
+			await store.get(hashKey(['todos', { status: 'done', page: 2 }])),
+		).toBeUndefined()
+		expect(
+			(await store.get(hashKey(['todos', { status: 'pending', page: 1 }])))
+				?.value,
+		).toBe('c')
+	})
+
+	it('should not match when filter is more specific than stored key', async () => {
+		await cache.setCacheData({ queryKey: ['todos'], value: 'all' })
+
+		await cache.invalidate({ queryKey: ['todos', 1], exact: false })
+
+		// ['todos'] does NOT match filter ['todos', 1] because filter has more elements
+		expect((await store.get(hashKey(['todos'])))?.value).toBe('all')
+	})
+
+	it('should invalidate across all stores', async () => {
+		const store2 = createTTLStore({ defaultTTL: 5 * Time.Minute })
+		const multiCache = createCache({
+			stores: [store, store2],
+			defaultRetry: false,
+		})
+
+		await multiCache.setCacheData({ queryKey: ['todos', 1], value: 'todo1' })
+
+		await multiCache.invalidate({ queryKey: ['todos'], exact: false })
+
+		expect(await store.get(hashKey(['todos', 1]))).toBeUndefined()
+		expect(await store2.get(hashKey(['todos', 1]))).toBeUndefined()
+
+		await store2.dispose?.()
+	})
+
+	it('should handle no matches gracefully (no-op)', async () => {
+		await cache.setCacheData({ queryKey: ['users', 1], value: 'user1' })
+
+		await expect(
+			cache.invalidate({ queryKey: ['todos'], exact: false }),
+		).resolves.not.toThrow()
+
+		expect((await store.get(hashKey(['users', 1])))?.value).toBe('user1')
+	})
+
+	it('should register keys from cacheQuery cache misses', async () => {
+		const queryFn = vi.fn().mockResolvedValue('result')
+
+		await cache.cacheQuery({ queryFn, queryKey: ['items', 1] })
+		await cache.cacheQuery({ queryFn, queryKey: ['items', 2] })
+
+		await cache.invalidate({ queryKey: ['items'], exact: false })
+
+		expect(await store.get(hashKey(['items', 1]))).toBeUndefined()
+		expect(await store.get(hashKey(['items', 2]))).toBeUndefined()
+	})
+
+	it('should clean up keyRegistry after invalidation', async () => {
+		await cache.setCacheData({ queryKey: ['todos', 1], value: 'todo1' })
+		await cache.invalidate({ queryKey: ['todos'], exact: false })
+
+		// Re-populate
+		await cache.setCacheData({ queryKey: ['todos', 1], value: 'todo1-new' })
+
+		// Partial invalidation should still work after cleanup+re-register
+		await cache.invalidate({ queryKey: ['todos'], exact: false })
+		expect(await store.get(hashKey(['todos', 1]))).toBeUndefined()
 	})
 })
 

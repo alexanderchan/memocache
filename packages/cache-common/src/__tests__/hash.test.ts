@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import { hashKey, hashString, isPlainArray, isPlainObject } from '@/hash'
+import {
+	hashKey,
+	hashString,
+	isPlainArray,
+	isPlainObject,
+	partialMatchKey,
+} from '@/hash'
 
 describe('hashKey function', () => {
 	it('should hash a simple query key', () => {
@@ -91,5 +97,73 @@ describe('isPlainArray', () => {
 	it('returns false for non-arrays', () => {
 		expect(isPlainArray({})).toBe(false)
 		expect(isPlainArray('string')).toBe(false)
+	})
+})
+
+describe('partialMatchKey', () => {
+	it('should match identical primitive values', () => {
+		expect(partialMatchKey(['todos'], ['todos'])).toBe(true)
+		expect(partialMatchKey(['todos', 1], ['todos', 1])).toBe(true)
+	})
+
+	it('should match when filter is a prefix of stored key', () => {
+		expect(partialMatchKey(['todos', 1], ['todos'])).toBe(true)
+		expect(partialMatchKey(['todos', { status: 'done' }], ['todos'])).toBe(true)
+	})
+
+	it('should NOT match when filter is more specific than stored key', () => {
+		expect(partialMatchKey(['todos'], ['todos', 1])).toBe(false)
+	})
+
+	it('should match when filter object is a subset of stored object', () => {
+		expect(
+			partialMatchKey(
+				['todos', { status: 'done', page: 1 }],
+				['todos', { status: 'done' }],
+			),
+		).toBe(true)
+	})
+
+	it('should NOT match when filter object has different value', () => {
+		expect(
+			partialMatchKey(
+				['todos', { status: 'done' }],
+				['todos', { status: 'pending' }],
+			),
+		).toBe(false)
+	})
+
+	it('should handle nested objects', () => {
+		expect(
+			partialMatchKey(
+				['q', { filters: { active: true, role: 'admin' } }],
+				['q', { filters: { active: true } }],
+			),
+		).toBe(true)
+	})
+
+	it('should return false for different types', () => {
+		expect(partialMatchKey(['todos'], [1])).toBe(false)
+	})
+
+	it('should match empty array filter against any key', () => {
+		expect(partialMatchKey(['todos', 1], [])).toBe(true)
+	})
+
+	it('should match identical complex keys', () => {
+		const key = ['users', { id: 1, filters: { active: true } }, ['sort', 'asc']]
+		expect(partialMatchKey(key, key)).toBe(true)
+	})
+
+	it('should match when both values at a position are null', () => {
+		expect(partialMatchKey([null], [null])).toBe(true)
+	})
+
+	it('should not match when stored value is null but filter is non-null', () => {
+		expect(partialMatchKey([null], ['todos'])).toBe(false)
+	})
+
+	it('should not match when filter value is null but stored is non-null', () => {
+		expect(partialMatchKey(['todos'], [null])).toBe(false)
 	})
 })

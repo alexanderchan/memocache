@@ -6,6 +6,7 @@ import {
 	hashKey,
 	hashString,
 	type Logger,
+	partialMatchKey,
 	type QueryKey,
 	Time,
 } from '@alexmchan/memocache-common'
@@ -14,6 +15,8 @@ import { createTTLStore } from '@/stores'
 
 import { CacheError } from './error/cache-error'
 
+export type RetryDelayFn = (attempt: number, error: unknown) => number
+
 interface CacheQueryOptions {
 	/** Time to live (expiry) in milliseconds from now to expire a record if no other overrides are provided */
 	ttl?: number
@@ -21,7 +24,12 @@ interface CacheQueryOptions {
 	fresh?: number
 	/** A prefix to add to the cache key */
 	cachePrefix?: string
-	/** An array of keys to ignore when hashing the query key */
+	/** Number of times to retry a failed queryFn, or false to disable. Default: 3 */
+	retry?: number | false
+	/** Delay between retries in ms, or a function of (attempt, error) => ms. Default: exponential backoff capped at 30s */
+	retryDelay?: number | RetryDelayFn
+	/** AbortSignal to cancel the caller's wait for this query. Does not cancel the underlying shared fetch. */
+	signal?: AbortSignal
 }
 interface CacheOptions {
 	/** An array of stores, order read from will be first in the array to last */
@@ -38,6 +46,10 @@ interface CacheOptions {
 	defaultFresh?: number
 	/** Logger to use for cache errors */
 	logger?: Logger
+	/** Default number of retries for failed queryFn calls. Default: 3 */
+	defaultRetry?: number | false
+	/** Default retry delay. Default: exponential backoff capped at 30s */
+	defaultRetryDelay?: number | RetryDelayFn
 }
 
 const DEFAULT_FRESH = 30 * Time.Second // when data is fresh we don't revalidate
@@ -50,6 +62,8 @@ export const createCache = ({
 	defaultFresh = DEFAULT_FRESH,
 	logger = defaultLogger,
 	context,
+	defaultRetry = 3,
+	defaultRetryDelay,
 }: CacheOptions = {}) => {
 	// Only use the default in-memory store when no async store factory is provided
 	const stores =
@@ -60,6 +74,95 @@ export const createCache = ({
 	const _stores: CacheStore[] = []
 	let initPromise: Promise<CacheStore[]> | undefined
 	const revalidating = new Map<string, Promise<any>>()
+	const keyRegistry = new Map<string, QueryKey>()
+
+	function getRetryDelay(
+		attempt: number,
+		error: unknown,
+		retryDelay: number | RetryDelayFn | undefined,
+	): number {
+		if (typeof retryDelay === 'function') return retryDelay(attempt, error)
+		if (typeof retryDelay === 'number') return retryDelay
+		// Default exponential backoff: 1s, 2s, 4s… capped at 30s
+		return Math.min(1000 * 2 ** attempt, 30_000)
+	}
+
+	async function executeWithRetry<T>(
+		fn: () => Promise<T>,
+		retryOpts: {
+			retry: number | false
+			retryDelay: number | RetryDelayFn | undefined
+			signal?: AbortSignal
+		},
+	): Promise<T> {
+		const maxRetries = retryOpts.retry === false ? 0 : retryOpts.retry
+		let attempt = 0
+		while (true) {
+			if (retryOpts.signal?.aborted)
+				throw (
+					retryOpts.signal.reason ?? new DOMException('Aborted', 'AbortError')
+				)
+			try {
+				return await fn()
+			} catch (error) {
+				if (retryOpts.signal?.aborted)
+					throw (
+						retryOpts.signal.reason ?? new DOMException('Aborted', 'AbortError')
+					)
+				if (attempt >= maxRetries) throw error
+				const delay = getRetryDelay(attempt, error, retryOpts.retryDelay)
+				attempt++
+				// Fix: use a named handler so we can remove it when the timer fires normally,
+				// preventing a listener leak on successful retry delays.
+				await new Promise<void>((resolve, reject) => {
+					const onAbort = () => {
+						clearTimeout(timer)
+						reject(
+							retryOpts.signal!.reason ??
+								new DOMException('Aborted', 'AbortError'),
+						)
+					}
+					const timer = setTimeout(() => {
+						retryOpts.signal?.removeEventListener('abort', onAbort)
+						resolve()
+					}, delay)
+					retryOpts.signal?.addEventListener('abort', onAbort, { once: true })
+				})
+			}
+		}
+	}
+
+	/**
+	 * Race a promise against an AbortSignal. If the signal fires, the returned
+	 * promise rejects with the abort reason — but the underlying `promise` is
+	 * not cancelled and continues to completion (important for shared/dedup'd fetches).
+	 */
+	function raceWithSignal<T>(
+		promise: Promise<T>,
+		signal: AbortSignal | undefined,
+	): Promise<T> {
+		if (!signal) return promise
+		if (signal.aborted)
+			return Promise.reject(
+				signal.reason ?? new DOMException('Aborted', 'AbortError'),
+			)
+		return new Promise<T>((resolve, reject) => {
+			const onAbort = () => {
+				reject(signal.reason ?? new DOMException('Aborted', 'AbortError'))
+			}
+			signal.addEventListener('abort', onAbort, { once: true })
+			promise.then(
+				(value) => {
+					signal.removeEventListener('abort', onAbort)
+					resolve(value)
+				},
+				(err) => {
+					signal.removeEventListener('abort', onAbort)
+					reject(err)
+				},
+			)
+		})
+	}
 
 	async function getStores(): Promise<CacheStore[]> {
 		if (!initPromise) {
@@ -89,7 +192,7 @@ export const createCache = ({
 		queryKey,
 		options,
 	}: {
-		queryFn: () => Promise<T>
+		queryFn: (context?: { signal: AbortSignal }) => Promise<T>
 		queryKey: QueryKey
 		options?: CacheQueryOptions
 	}): Promise<T | undefined> {
@@ -102,6 +205,9 @@ export const createCache = ({
 			...options,
 			ttl: options?.ttl ?? defaultTTL,
 			fresh: options?.fresh ?? defaultFresh,
+			retry: options?.retry !== undefined ? options.retry : defaultRetry,
+			retryDelay: options?.retryDelay ?? defaultRetryDelay,
+			signal: options?.signal,
 		}
 
 		const _stores = await getStores()
@@ -137,38 +243,62 @@ export const createCache = ({
 
 		// If stale, return from cache and revalidate in the background
 		if (result) {
-			revalidateInBackground({ queryFn, queryKey: key, ttl: localOptions?.ttl })
+			revalidateInBackground({
+				queryFn,
+				queryKey: key,
+				originalQueryKey: queryKey,
+				ttl: localOptions?.ttl,
+				retry: localOptions.retry,
+				retryDelay: localOptions.retryDelay,
+			})
 			return result.value // Return stale data
 		}
 
-		// No data in cache, fetch from the source
-		try {
-			const existing = revalidating.get(key)
-			if (existing) {
-				return await existing
-			}
+		// No data in cache, fetch from the source.
+		//
+		// We use an internal AbortController that is NOT linked to the caller's signal.
+		// This means the shared (dedup'd) fetch continues even if one caller aborts —
+		// the result will be cached for subsequent callers. Individual callers race their
+		// own signal against the shared promise via raceWithSignal().
+		const controller = new AbortController()
 
-			const p = queryFn()
-			revalidating.set(key, p)
-			const newData = await p
-
-			const writeToStoresPromise = Promise.allSettled(
-				_stores.map((store) =>
-					store.set(
-						key,
-						{ value: newData, age: Date.now() },
-						localOptions?.ttl,
-					),
-				),
-			)
-
-			// kick off the store updates in the background
-			_context.waitUntil(writeToStoresPromise)
-
-			return newData
-		} finally {
-			revalidating.delete(key)
+		// If this key is already being fetched, join the existing promise instead of
+		// starting a new one. Each caller races the shared promise against their own signal.
+		const existing = revalidating.get(key)
+		if (existing) {
+			return await raceWithSignal(existing, localOptions.signal)
 		}
+
+		// Register the key before the fetch so partial invalidation can evict stale data
+		// even if the fetch eventually fails.
+		keyRegistry.set(key, queryKey)
+
+		// Build the shared promise that handles the fetch, store writes, and dedup cleanup.
+		// The cleanup lives inside p.finally() so it runs regardless of whether callers
+		// are still waiting (they may have raced away via their AbortSignal).
+		const p = executeWithRetry(() => queryFn({ signal: controller.signal }), {
+			retry: localOptions.retry,
+			retryDelay: localOptions.retryDelay,
+		})
+			.then(async (newData) => {
+				const writeToStoresPromise = Promise.allSettled(
+					_stores.map((store) =>
+						store.set(
+							key,
+							{ value: newData, age: Date.now() },
+							localOptions?.ttl,
+						),
+					),
+				)
+				_context.waitUntil(writeToStoresPromise)
+				return newData
+			})
+			.finally(() => {
+				revalidating.delete(key)
+			})
+
+		revalidating.set(key, p)
+		return await raceWithSignal(p, localOptions.signal)
 	}
 
 	function getRemainingTTL({
@@ -211,19 +341,34 @@ export const createCache = ({
 	const revalidateInBackground = async ({
 		queryFn,
 		queryKey,
+		originalQueryKey,
 		ttl = 5 * Time.Minute,
+		retry,
+		retryDelay,
 	}: {
-		queryFn: () => Promise<any>
+		queryFn: (context?: { signal: AbortSignal }) => Promise<any>
 		queryKey: string
+		originalQueryKey: QueryKey
 		ttl?: number
+		retry?: number | false
+		retryDelay?: number | RetryDelayFn
 	}) => {
+		const effectiveRetry = retry !== undefined ? retry : defaultRetry
+		// Register the key before the fetch so partial invalidation can evict stale data
+		// even if the background fetch fails.
+		keyRegistry.set(queryKey, originalQueryKey)
 		try {
 			const existing = revalidating.get(queryKey)
 			if (existing) {
 				return await existing
 			}
 
-			const p = queryFn()
+			const controller = new AbortController()
+			const p = executeWithRetry(() => queryFn({ signal: controller.signal }), {
+				retry: effectiveRetry,
+				retryDelay: retryDelay ?? defaultRetryDelay,
+				signal: controller.signal,
+			})
 			revalidating.set(queryKey, p)
 			const newData = await p
 
@@ -281,11 +426,33 @@ export const createCache = ({
 		return Promise.allSettled(_stores.map((store) => store.dispose?.()))
 	}
 
-	const invalidate = async ({ queryKey }: { queryKey: any[] }) => {
-		const key = hashKey(queryKey)
+	const invalidate = async ({
+		queryKey,
+		exact = true,
+	}: {
+		queryKey: any[]
+		exact?: boolean
+	}) => {
 		const stores = await getStores()
 
-		await Promise.allSettled(stores.map((store) => store.delete(key)))
+		if (exact) {
+			const key = hashKey(queryKey)
+			keyRegistry.delete(key)
+			await Promise.allSettled(stores.map((store) => store.delete(key)))
+		} else {
+			const matchingKeys: string[] = []
+			for (const [hashedKey, originalKey] of keyRegistry.entries()) {
+				if (partialMatchKey(originalKey, queryKey)) {
+					matchingKeys.push(hashedKey)
+				}
+			}
+			for (const key of matchingKeys) {
+				keyRegistry.delete(key)
+			}
+			await Promise.allSettled(
+				matchingKeys.flatMap((key) => stores.map((store) => store.delete(key))),
+			)
+		}
 	}
 
 	const setCacheData = async ({
@@ -298,6 +465,7 @@ export const createCache = ({
 		ttl?: number
 	}) => {
 		const key = hashKey(queryKey)
+		keyRegistry.set(key, queryKey)
 		const stores = await getStores()
 		await Promise.allSettled(
 			stores.map((store) =>
