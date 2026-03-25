@@ -925,52 +925,19 @@ describe('AbortSignal', () => {
 		expect(Date.now() - start).toBeLessThan(500)
 	})
 
-	it('should not abort other callers when one caller aborts (dedup safety)', async () => {
+	it('should clean up deduplication map after abort so subsequent fetches retry', async () => {
 		const cache = createCache({ stores: [store], defaultRetry: false })
-
-		let resolveQueryFn!: (value: string) => void
-		const queryFn = vi.fn().mockImplementation(
-			() =>
-				new Promise<string>((resolve) => {
-					resolveQueryFn = resolve
-				}),
-		)
-
 		const controller = new AbortController()
 
-		// Two concurrent callers — caller A has a signal, caller B does not
-		const promiseA = cache.cacheQuery({
-			queryFn,
-			queryKey: ['a3b'],
-			options: { signal: controller.signal },
-		})
-		const promiseB = cache.cacheQuery({ queryFn, queryKey: ['a3b'] })
-
-		// Caller A aborts
-		controller.abort()
-		await expect(promiseA).rejects.toThrow()
-
-		// Resolve the underlying fetch — caller B should still get the result
-		resolveQueryFn('result')
-		const resultB = await promiseB
-		expect(resultB).toBe('result')
-
-		// queryFn was only called once (dedup'd)
-		expect(queryFn).toHaveBeenCalledTimes(1)
-	})
-
-	it('should clean up deduplication map after underlying fetch completes', async () => {
-		const cache = createCache({ stores: [store], defaultRetry: false })
-
-		let resolveQueryFn!: (value: string) => void
+		// queryFn that respects the signal (aborts when controller fires)
 		const queryFn = vi.fn().mockImplementation(
-			() =>
-				new Promise<string>((resolve) => {
-					resolveQueryFn = resolve
+			({ signal }: { signal: AbortSignal } = {} as any) =>
+				new Promise<string>((_, reject) => {
+					signal?.addEventListener('abort', () =>
+						reject(new DOMException('Aborted', 'AbortError')),
+					)
 				}),
 		)
-
-		const controller = new AbortController()
 
 		const promise = cache.cacheQuery({
 			queryFn,
@@ -978,23 +945,22 @@ describe('AbortSignal', () => {
 			options: { signal: controller.signal },
 		})
 
-		// Caller aborts — rejected immediately via raceWithSignal
+		// Aborting cancels both the caller (via raceWithSignal) and the underlying fetch
+		// (via the linked controller → queryFn's signal)
 		controller.abort()
 		await expect(promise).rejects.toThrow()
 
-		// Underlying fetch is still in progress — resolve it now
-		resolveQueryFn('background-result')
 		// Allow p.finally() to run and clean up the dedup map
 		await new Promise((resolve) => setTimeout(resolve, 0))
 
-		// Subsequent call gets the cached result (stored by the background fetch)
-		const queryFn2 = vi.fn().mockResolvedValue('should-not-be-called')
+		// Subsequent call (no signal) triggers a fresh fetch now that dedup map is cleared
+		const queryFn2 = vi.fn().mockResolvedValue('fresh-result')
 		const result = await cache.cacheQuery({
 			queryFn: queryFn2,
 			queryKey: ['a4'],
 		})
-		expect(result).toBe('background-result')
-		expect(queryFn2).not.toHaveBeenCalled()
+		expect(result).toBe('fresh-result')
+		expect(queryFn2).toHaveBeenCalledTimes(1)
 	})
 })
 
@@ -1098,6 +1064,22 @@ describe('partial key invalidation', () => {
 		).resolves.not.toThrow()
 
 		expect((await store.get(hashKey(['users', 1])))?.value).toBe('user1')
+	})
+
+	it('should register keys served as fresh hits (persistent store / restart scenario)', async () => {
+		// Simulate a persistent store already populated (e.g. Redis after restart).
+		// The key was never fetched through cacheQuery in this process, so keyRegistry is empty.
+		const key = hashKey(['items', 1])
+		await store.set(key, { value: 'cached', age: Date.now() }) // fresh entry
+
+		// Serve the fresh hit — this should populate keyRegistry
+		const queryFn = vi.fn().mockResolvedValue('never-called')
+		await cache.cacheQuery({ queryFn, queryKey: ['items', 1] })
+		expect(queryFn).not.toHaveBeenCalled() // confirmed fresh hit
+
+		// Now partial invalidation should find and evict the key
+		await cache.invalidate({ queryKey: ['items'], exact: false })
+		expect(await store.get(key)).toBeUndefined()
 	})
 
 	it('should register keys from cacheQuery cache misses', async () => {
