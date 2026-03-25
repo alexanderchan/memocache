@@ -118,7 +118,7 @@ export const createCache = ({
 					const onAbort = () => {
 						clearTimeout(timer)
 						reject(
-							retryOpts.signal!.reason ??
+							retryOpts.signal?.reason ??
 								new DOMException('Aborted', 'AbortError'),
 						)
 					}
