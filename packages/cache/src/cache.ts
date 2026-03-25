@@ -28,7 +28,7 @@ interface CacheQueryOptions {
 	retry?: number | false
 	/** Delay between retries in ms, or a function of (attempt, error) => ms. Default: exponential backoff capped at 30s */
 	retryDelay?: number | RetryDelayFn
-	/** AbortSignal to cancel the caller's wait for this query. Does not cancel the underlying shared fetch. */
+	/** AbortSignal to cancel the in-flight queryFn and stop retrying. In the dedup case, aborting the first caller's signal cancels the shared fetch and rejects other callers sharing the same promise. */
 	signal?: AbortSignal
 }
 interface CacheOptions {
@@ -227,6 +227,9 @@ export const createCache = ({
 		}
 
 		if (isFresh) {
+			// Register in keyRegistry so partial invalidation can find this key even if it
+			// was populated by a previous process and never went through cacheQuery's miss path.
+			keyRegistry.set(key, queryKey)
 			if (hitStoreIndex > 0) {
 				backfillHigherPriorityStores({
 					stores: _stores.slice(0, hitStoreIndex),
@@ -256,14 +259,22 @@ export const createCache = ({
 
 		// No data in cache, fetch from the source.
 		//
-		// We use an internal AbortController that is NOT linked to the caller's signal.
-		// This means the shared (dedup'd) fetch continues even if one caller aborts —
-		// the result will be cached for subsequent callers. Individual callers race their
-		// own signal against the shared promise via raceWithSignal().
+		// The caller's signal is linked to an internal AbortController so that aborting
+		// actually cancels the queryFn and stops the retry loop. In the dedup case
+		// (another caller joins while a fetch is in-flight), they share the same promise:
+		// if the first caller's signal aborts the fetch, other callers sharing the promise
+		// will also receive the error.
 		const controller = new AbortController()
+		let cleanupSignalLink: (() => void) | undefined
+		if (localOptions.signal) {
+			const onAbort = () => controller.abort(localOptions.signal?.reason)
+			localOptions.signal.addEventListener('abort', onAbort, { once: true })
+			cleanupSignalLink = () =>
+				localOptions.signal?.removeEventListener('abort', onAbort)
+		}
 
 		// If this key is already being fetched, join the existing promise instead of
-		// starting a new one. Each caller races the shared promise against their own signal.
+		// starting a new one. Individual callers race the shared promise against their own signal.
 		const existing = revalidating.get(key)
 		if (existing) {
 			return await raceWithSignal(existing, localOptions.signal)
@@ -279,6 +290,7 @@ export const createCache = ({
 		const p = executeWithRetry(() => queryFn({ signal: controller.signal }), {
 			retry: localOptions.retry,
 			retryDelay: localOptions.retryDelay,
+			signal: localOptions.signal,
 		})
 			.then(async (newData) => {
 				const writeToStoresPromise = Promise.allSettled(
@@ -294,10 +306,15 @@ export const createCache = ({
 				return newData
 			})
 			.finally(() => {
+				cleanupSignalLink?.()
 				revalidating.delete(key)
 			})
 
 		revalidating.set(key, p)
+		// Suppress unhandled rejection on `p`: callers get their error via raceWithSignal.
+		// Without this, if the signal aborts (settling the caller's promise early) and
+		// p later rejects, Node treats p's rejection as unhandled.
+		p.catch(() => {})
 		return await raceWithSignal(p, localOptions.signal)
 	}
 
