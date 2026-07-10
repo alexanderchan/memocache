@@ -9,6 +9,7 @@
     "docs": "astro dev",
     "generate:diagrams": "docker run --rm -u `id -u`:`id -g` -v ./src/assets:/data minlag/mermaid-cli -i overview-diagram.md -o overview-diagram.svg",
     "build": "astro check && astro build",
+    "typecheck": "astro check",
     "preview": "astro preview",
     "astro": "astro"
   },

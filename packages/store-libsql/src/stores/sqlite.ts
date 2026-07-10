@@ -46,6 +46,9 @@ export function createSqliteStore({
 	let cleanupIntervalId: NodeJS.Timeout
 	let hasInitializedDb = false
 
+	// Track whether we created the client ourselves. If the caller injected a
+	// client we must not close it on dispose.
+	const ownsClient = !sqliteClientProp
 	const sqliteClient =
 		sqliteClientProp ||
 		createClient({
@@ -94,6 +97,11 @@ export function createSqliteStore({
 			cleanup().catch(logger.error)
 			clearInterval(cleanupIntervalId)
 		}
+		// Only close the client if we created it; an injected client is owned
+		// by the caller.
+		if (ownsClient) {
+			sqliteClient.close()
+		}
 	}
 
 	const store: SqliteStore = {
@@ -124,7 +132,9 @@ export function createSqliteStore({
 			if (row.expires && Number(row.expires) < Date.now()) {
 				// If expired, delete the entry and return null
 				// we don't need to wait for the delete to finish
-				this.delete(key)
+				this.delete(key).catch((error) =>
+					logger.error('Failed to delete expired SQLite entry:', error),
+				)
 				return undefined
 			}
 
@@ -147,6 +157,9 @@ export function createSqliteStore({
 			cleanupIntervalId = setInterval(() => {
 				this.cleanup().catch(logger.error)
 			}, cleanupInterval)
+			// Don't let the cleanup timer keep the Node event loop alive; edge
+			// runtimes return a number without unref, hence the optional chain.
+			cleanupIntervalId.unref?.()
 		},
 		clear: async () => {
 			await lazyInit()

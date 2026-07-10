@@ -92,7 +92,7 @@ export const createCache = ({
 		queryFn: () => Promise<T>
 		queryKey: QueryKey
 		options?: CacheQueryOptions
-	}): Promise<T | undefined> {
+	}): Promise<T> {
 		let result = null
 		let isFresh = false
 		let hitStoreIndex = -1
@@ -146,7 +146,8 @@ export const createCache = ({
 					}),
 				})
 			}
-			return result?.value // Data is fresh, return from cache
+			// isFresh is only set after a store hit assigns result, so it is non-null here
+			return result.value // Data is fresh, return from cache
 		}
 
 		// If stale, return from cache and revalidate in the background
@@ -356,12 +357,12 @@ export const createCache = ({
 
 		async function cachedFunction(
 			...args: Parameters<T>
-		): Promise<ReturnType<T> | undefined> {
+		): Promise<Awaited<ReturnType<T>>> {
 			// we delay the generation of the cache key until the first call
 			// so that we can call createCachedFunction syncrhonously
 
 			const cachePrefix = await getCachePrefix()
-			return cacheQuery<ReturnType<T>>({
+			return cacheQuery<Awaited<ReturnType<T>>>({
 				queryFn: () => fn(...args),
 				queryKey: [cachePrefix, args],
 				options,

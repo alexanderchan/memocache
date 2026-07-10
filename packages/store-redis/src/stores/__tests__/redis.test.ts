@@ -122,3 +122,76 @@ describe('Redis Cache', () => {
 		expect(nullResult).toBeNull()
 	})
 })
+
+function createFakeLogger() {
+	return {
+		debug: vi.fn(),
+		log: vi.fn(),
+		info: vi.fn(),
+		warn: vi.fn(),
+		error: vi.fn(),
+	}
+}
+
+function createFakeRedisClient() {
+	return {
+		info: vi.fn().mockResolvedValue(''),
+		on: vi.fn().mockReturnThis(),
+		quit: vi.fn().mockResolvedValue('OK'),
+		set: vi.fn().mockResolvedValue('OK'),
+		get: vi.fn().mockResolvedValue(null),
+		del: vi.fn().mockResolvedValue(0),
+	}
+}
+
+describe('Redis Cache lifecycle', () => {
+	it('logs an error and causes no unhandled rejection when an injected client promise rejects', async () => {
+		const logger = createFakeLogger()
+		const unhandled: unknown[] = []
+		const onUnhandled = (reason: unknown) => unhandled.push(reason)
+		process.on('unhandledRejection', onUnhandled)
+
+		try {
+			const rejection = new Error('injected client failed to connect')
+			createRedisStore({
+				redisClient: Promise.reject(rejection) as any,
+				logger,
+			})
+
+			await vi.waitFor(() => {
+				expect(logger.error).toHaveBeenCalledWith(
+					'Failed to initialize Redis:',
+					rejection,
+				)
+			})
+
+			// let any late microtask surface as an unhandled rejection
+			await new Promise((resolve) => setTimeout(resolve, 0))
+			expect(unhandled).toEqual([])
+		} finally {
+			process.off('unhandledRejection', onUnhandled)
+		}
+	})
+
+	it('does not quit an injected client on dispose', async () => {
+		const client = createFakeRedisClient()
+		const store = createRedisStore({ redisClient: client as any })
+
+		await store.dispose?.()
+
+		expect(client.quit).not.toHaveBeenCalled()
+	})
+
+	it('quits a client it created itself on dispose', async () => {
+		const quitSpy = vi.spyOn(Redis.prototype, 'quit')
+
+		try {
+			const store = createRedisStore({})
+			await store.dispose?.()
+
+			expect(quitSpy).toHaveBeenCalledTimes(1)
+		} finally {
+			quitSpy.mockRestore()
+		}
+	})
+})

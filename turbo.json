@@ -33,8 +33,11 @@
     "coverage": {
       "dependsOn": ["^build"]
     },
+    "check-exports": {
+      "dependsOn": ["build"]
+    },
     "ci": {
-      "dependsOn": ["^ci", "typecheck", "test", "//#check", "lint"]
+      "dependsOn": ["^ci", "typecheck", "test", "//#check", "lint", "check-exports"]
     }
   }
 }
