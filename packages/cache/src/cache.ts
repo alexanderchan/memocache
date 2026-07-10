@@ -107,11 +107,25 @@ export const createCache = ({
 		const _stores = await getStores()
 
 		for (const [index, store] of _stores.entries()) {
-			result = await store.get(key)
+			let entry: Awaited<ReturnType<CacheStore['get']>>
+			try {
+				entry = await store.get(key)
+			} catch {
+				// a failing cache tier must never take down reads; skip to the next store/origin
+				logger.error(
+					new CacheError({
+						key,
+						message: `Failed to read from store ${store.name}`,
+					}),
+				)
+				continue
+			}
 
-			if (result) {
+			if (entry) {
+				// keep the stale hit even if a lower-priority store later misses
+				result = entry
 				hitStoreIndex = index
-				const age = result.age ? Date.now() - result.age : 0
+				const age = entry.age ? Date.now() - entry.age : 0
 
 				if (age < localOptions.fresh) {
 					isFresh = true
@@ -137,18 +151,26 @@ export const createCache = ({
 
 		// If stale, return from cache and revalidate in the background
 		if (result) {
-			revalidateInBackground({ queryFn, queryKey: key, ttl: localOptions?.ttl })
+			// register with the context so edge runtimes don't kill the revalidation
+			_context.waitUntil(
+				revalidateInBackground({
+					queryFn,
+					queryKey: key,
+					ttl: localOptions?.ttl,
+				}),
+			)
 			return result.value // Return stale data
 		}
 
 		// No data in cache, fetch from the source
+		let p: Promise<T> | undefined
 		try {
 			const existing = revalidating.get(key)
 			if (existing) {
 				return await existing
 			}
 
-			const p = queryFn()
+			p = queryFn()
 			revalidating.set(key, p)
 			const newData = await p
 
@@ -167,7 +189,11 @@ export const createCache = ({
 
 			return newData
 		} finally {
-			revalidating.delete(key)
+			// only the owner may delete, and only if the entry is still ours —
+			// otherwise a reader's finally can evict a newer in-flight promise
+			if (p && revalidating.get(key) === p) {
+				revalidating.delete(key)
+			}
 		}
 	}
 
@@ -217,13 +243,14 @@ export const createCache = ({
 		queryKey: string
 		ttl?: number
 	}) => {
+		let p: Promise<any> | undefined
 		try {
 			const existing = revalidating.get(queryKey)
 			if (existing) {
 				return await existing
 			}
 
-			const p = queryFn()
+			p = queryFn()
 			revalidating.set(queryKey, p)
 			const newData = await p
 
@@ -272,7 +299,9 @@ export const createCache = ({
 			// we are in the background so we don't need to throw
 			return
 		} finally {
-			revalidating.delete(queryKey)
+			if (p && revalidating.get(queryKey) === p) {
+				revalidating.delete(queryKey)
+			}
 		}
 	}
 

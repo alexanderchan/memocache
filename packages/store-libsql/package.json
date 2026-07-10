@@ -3,14 +3,12 @@
 	"version": "1.0.0",
 	"private": false,
 	"dependencies": {
-		"@upstash/redis": "^1.37.0",
 		"@libsql/client": "^0.17.0",
 		"superjson": "^2.2.6",
 		"@alexmchan/memocache-common": "workspace:^"
 	},
 	"devDependencies": {
 		"@alexmchan/memocache": "workspace:^",
-		"@testcontainers/redis": "^11.12.0",
 		"tsup": "^8.5.1",
 		"typescript": "^5.9.3",
 		"vite-tsconfig-paths": "^6.1.1",
@@ -38,6 +36,9 @@
 	"type": "module",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
+	"files": [
+		"dist"
+	],
 	"exports": {
 		".": {
 			"import": "./dist/index.js",

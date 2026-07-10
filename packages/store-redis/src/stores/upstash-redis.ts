@@ -5,6 +5,7 @@ import {
 	Time,
 } from '@alexmchan/memocache-common'
 import { Redis } from '@upstash/redis'
+import superjson from 'superjson'
 
 export const createUpstashRedisStore = ({
 	redisClient: redisClientProp,
@@ -33,12 +34,28 @@ export const createUpstashRedisStore = ({
 	return {
 		name: 'upstash-redis',
 		async set(key, value, ttl = defaultTTL) {
-			await redisClient.set(key, value, { px: ttl })
+			// superjson round-trip for parity with the other stores (Dates/Maps/undefined survive)
+			await redisClient.set(key, superjson.stringify(value), { px: ttl })
 		},
 		async get(key) {
 			const data = await redisClient.get(key)
+			if (data === null || data === undefined) {
+				return undefined
+			}
 
-			return data
+			try {
+				if (typeof data === 'string') {
+					return superjson.parse(data)
+				}
+				// the upstash client auto-JSON.parses responses; rehydrate the envelope
+				if (typeof data === 'object' && 'json' in data) {
+					return superjson.deserialize(data as any)
+				}
+				// pre-superjson entry from an older version: treat as a miss
+				return undefined
+			} catch {
+				return undefined
+			}
 		},
 		async delete(key) {
 			return redisClient.del(key)

@@ -7,9 +7,10 @@ import superjson from 'superjson'
 // and this will be the most common use case
 const encryptMemoized = memoizeLast(
 	encrypt,
-	// Compare only the data argument (index 0); CryptoKey serializes as {} with
-	// superjson so comparing it would make all keys appear equal.
+	// CryptoKey serializes as {} with superjson, so compare it by reference —
+	// otherwise stores with different keys would share each other's ciphertext.
 	(lastArgs, newArgs) =>
+		lastArgs[1] === newArgs[1] &&
 		superjson.stringify(lastArgs[0]) === superjson.stringify(newArgs[0]),
 )
 
@@ -93,7 +94,12 @@ export function createEncryptedStore({
 				iv: string
 				ciphertext: string
 			}
-			return decrypt(iv, ciphertext, cryptoKey)
+			try {
+				return await decrypt(iv, ciphertext, cryptoKey)
+			} catch {
+				// rotated key or corrupt entry — degrade to a cache miss
+				return undefined
+			}
 		},
 		async set(key: string, value: any, ttl?: number) {
 			await lazyInitialize()

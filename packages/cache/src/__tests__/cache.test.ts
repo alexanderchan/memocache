@@ -173,6 +173,115 @@ describe('cacheQuery', () => {
 		expect((await store1.get(key))?.value).toBe('fresh data')
 	})
 
+	it('should serve a stale hit from a higher priority store when lower priority stores miss', async () => {
+		const store1 = createTTLStore({ defaultTTL: 5 * Time.Minute })
+		const store2 = createTTLStore({ defaultTTL: 5 * Time.Minute })
+		const multiCache = createCache({ stores: [store1, store2] })
+
+		const queryFn = vi.fn().mockImplementation(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 20))
+			return 'fresh data'
+		})
+		const queryKey = ['test-stale-first-store']
+		const key = hashKey(queryKey)
+
+		// stale entry only in the first store; second store misses
+		await store1.set(key, {
+			value: 'stale data',
+			age: Date.now() - 1 * Time.Hour,
+		})
+
+		const result = await multiCache.cacheQuery({ queryFn, queryKey })
+
+		// stale value is served immediately instead of blocking on queryFn
+		expect(result).toBe('stale data')
+
+		await new Promise((resolve) => setTimeout(resolve, 40))
+
+		// background revalidation still happened
+		expect(queryFn).toHaveBeenCalledTimes(1)
+		expect((await store1.get(key))?.value).toBe('fresh data')
+		expect((await store2.get(key))?.value).toBe('fresh data')
+	})
+
+	it('should skip a store whose get() rejects and fall through to the next store', async () => {
+		const errorLogger = vi.fn()
+		const mockLogger = {
+			error: errorLogger,
+			log: vi.fn(),
+			warn: vi.fn(),
+			debug: vi.fn(),
+			info: vi.fn(),
+		}
+		const brokenStore = {
+			name: 'broken',
+			get: vi.fn().mockRejectedValue(new Error('redis is down')),
+			set: vi.fn().mockResolvedValue(undefined),
+			delete: vi.fn().mockResolvedValue(undefined),
+			[Symbol.asyncDispose]: async () => {},
+		}
+		const healthyStore = createTTLStore({ defaultTTL: 5 * Time.Minute })
+		const multiCache = createCache({
+			stores: [brokenStore, healthyStore],
+			logger: mockLogger,
+		})
+
+		const queryKey = ['test-broken-store']
+		const key = hashKey(queryKey)
+		await healthyStore.set(key, { value: 'cached data', age: Date.now() })
+
+		const queryFn = vi.fn().mockResolvedValue('origin data')
+		const result = await multiCache.cacheQuery({ queryFn, queryKey })
+
+		expect(result).toBe('cached data')
+		expect(queryFn).not.toHaveBeenCalled()
+		expect(errorLogger).toHaveBeenCalled()
+	})
+
+	it('should fall back to origin when every store get() rejects', async () => {
+		const brokenStore = {
+			name: 'broken',
+			get: vi.fn().mockRejectedValue(new Error('redis is down')),
+			set: vi.fn().mockResolvedValue(undefined),
+			delete: vi.fn().mockResolvedValue(undefined),
+			[Symbol.asyncDispose]: async () => {},
+		}
+		const multiCache = createCache({ stores: [brokenStore] })
+
+		const queryFn = vi.fn().mockResolvedValue('origin data')
+		const result = await multiCache.cacheQuery({
+			queryFn,
+			queryKey: ['test-all-broken'],
+		})
+
+		expect(result).toBe('origin data')
+		expect(queryFn).toHaveBeenCalledTimes(1)
+	})
+
+	it('should register background revalidation with context.waitUntil when serving stale data', async () => {
+		const waitUntilMock = vi.fn()
+		const mockContext = { waitUntil: waitUntilMock }
+		const testStore = createTTLStore({ defaultTTL: 5 * Time.Minute })
+		const testCache = createCache({
+			stores: [testStore],
+			context: mockContext,
+		})
+
+		const queryKey = ['test-stale-waituntil']
+		await testStore.set(hashKey(queryKey), {
+			value: 'stale data',
+			age: Date.now() - 1 * Time.Hour,
+		})
+
+		const queryFn = vi.fn().mockResolvedValue('fresh data')
+		const result = await testCache.cacheQuery({ queryFn, queryKey })
+
+		expect(result).toBe('stale data')
+		// the revalidation promise itself must be registered, not just the store writes
+		expect(waitUntilMock).toHaveBeenCalled()
+		expect(waitUntilMock.mock.calls[0][0]).toBeInstanceOf(Promise)
+	})
+
 	it('should respect custom TTL', async () => {
 		const queryFn = vi.fn().mockResolvedValue('new data')
 		const queryKey = ['test']

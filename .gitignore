@@ -8,6 +8,7 @@ node_modules/
 
 # testing
 /coverage
+coverage/
 
 # production
 build/
@@ -69,3 +70,4 @@ certs
 venv
 .turbo
 .turbo/daemon
+docs/.claude

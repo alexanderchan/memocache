@@ -126,6 +126,50 @@ describe('Encrypted TTL Cache', () => {
 		expect(nullResult).toBeNull()
 	})
 
+	it('should not share memoized ciphertext between stores with different keys', async () => {
+		const backing1 = createTTLStore({ defaultTTL: 60 * Time.Second })
+		const backing2 = createTTLStore({ defaultTTL: 60 * Time.Second })
+		const storeA = createEncryptedStore({
+			store: backing1,
+			key: 'first-secret-key',
+			salt: 'salt',
+		})
+		const storeB = createEncryptedStore({
+			store: backing2,
+			key: 'second-secret-key',
+			salt: 'salt',
+		})
+
+		// same value through both stores back-to-back exercises the shared memoizer
+		await storeA.set('shared-key', 'same value')
+		await storeB.set('shared-key', 'same value')
+
+		// each store must be able to decrypt its own entry
+		expect(await storeA.get('shared-key')).toBe('same value')
+		expect(await storeB.get('shared-key')).toBe('same value')
+	})
+
+	it('should treat undecryptable entries as a cache miss instead of throwing', async () => {
+		const backing = createTTLStore({ defaultTTL: 60 * Time.Second })
+		const encrypted = createEncryptedStore({
+			store: backing,
+			key: 'rotated-secret-key',
+			salt: 'salt',
+		})
+
+		await encrypted.set('corrupt-key', 'secret')
+
+		// corrupt the stored ciphertext (simulates key rotation / bit rot)
+		const entries = await backing.entries?.()
+		const storedKey = entries?.[0]?.[0] as string
+		await backing.set(storedKey, {
+			iv: btoa('123456789012'),
+			ciphertext: btoa('not real ciphertext'),
+		})
+
+		await expect(encrypted.get('corrupt-key')).resolves.toBeUndefined()
+	})
+
 	it('should throw if key is shorter than 8 characters', () => {
 		expect(() =>
 			createEncryptedStore({

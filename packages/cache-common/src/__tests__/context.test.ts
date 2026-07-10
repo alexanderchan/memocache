@@ -59,6 +59,30 @@ describe('DefaultStatefulContext', () => {
 		expect(flushSpy).toHaveBeenCalledOnce()
 	})
 
+	it('drops settled promises so long-running processes do not retain them', async () => {
+		const ctx = new DefaultStatefulContext()
+
+		ctx.waitUntil(Promise.resolve('done'))
+		ctx.waitUntil(Promise.reject(new Error('intentional failure')))
+
+		// let the finally callbacks run
+		await new Promise((resolve) => setTimeout(resolve, 0))
+
+		expect((ctx as any).promises).toHaveLength(0)
+
+		// pending promises are still retained until they settle
+		let resolvePending: (() => void) | undefined
+		ctx.waitUntil(
+			new Promise<void>((resolve) => {
+				resolvePending = resolve
+			}),
+		)
+		expect((ctx as any).promises).toHaveLength(1)
+		resolvePending?.()
+		await new Promise((resolve) => setTimeout(resolve, 0))
+		expect((ctx as any).promises).toHaveLength(0)
+	})
+
 	it('handles rejected promises gracefully (allSettled does not throw)', async () => {
 		const ctx = new DefaultStatefulContext()
 
