@@ -128,6 +128,19 @@ describe('TTL Cache', () => {
 			process.env.NODE_ENV = original
 		}
 	})
+
+	it('should not throw when process is undefined (edge runtime)', async () => {
+		const store = createTTLStore({ defaultTTL: 60 * Time.Second })
+		await store.set('edge-key', 'edge-value', 5 * Time.Second)
+		vi.stubGlobal('process', undefined)
+		try {
+			await expect(store.entries()).resolves.toEqual([
+				['edge-key', 'edge-value'],
+			])
+		} finally {
+			vi.unstubAllGlobals()
+		}
+	})
 })
 
 describe('createCache with no default params', () => {

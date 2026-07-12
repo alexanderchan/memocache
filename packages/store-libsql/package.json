@@ -9,6 +9,7 @@
 	},
 	"devDependencies": {
 		"@alexmchan/memocache": "workspace:^",
+		"@arethetypeswrong/cli": "^0.18.2",
 		"tsup": "^8.5.1",
 		"typescript": "^5.9.3",
 		"vite-tsconfig-paths": "^6.1.1",
@@ -25,7 +26,7 @@
 	},
 	"scripts": {
 		"build": "tsup",
-		"check-exports": "yarn pack --out ./ignore-package.tgz && yarn attw ./ignore-package.tgz && rm ./ignore-package.tgz",
+		"check-exports": "pnpm pack --out ./ignore-package.tgz && pnpm exec attw ./ignore-package.tgz && rm ./ignore-package.tgz",
 		"typecheck": "tsc --noEmit",
 		"test": "vitest run",
 		"coverage": "vitest run --coverage",
@@ -41,8 +42,14 @@
 	],
 	"exports": {
 		".": {
-			"import": "./dist/index.js",
-			"default": "./dist/index.cjs"
+			"import": {
+				"types": "./dist/index.d.ts",
+				"default": "./dist/index.js"
+			},
+			"default": {
+				"types": "./dist/index.d.cts",
+				"default": "./dist/index.cjs"
+			}
 		}
 	}
 }

@@ -11,11 +11,18 @@ export const createUpstashRedisStore = ({
 	redisClient: redisClientProp,
 	defaultTTL = 5 * Time.Minute,
 	logger = defaultLogger,
+	verifyConnection = false,
 }: {
 	/** Will default to new Redis.fromEnv() */
 	redisClient?: Redis
 	defaultTTL?: number
 	logger?: Logger
+	/**
+	 * Ping the Upstash REST API on construction to verify connectivity.
+	 * Off by default so serverless cold starts don't incur an extra paid
+	 * request per store instance.
+	 */
+	verifyConnection?: boolean
 } = {}) => {
 	const redisClient =
 		redisClientProp ||
@@ -24,12 +31,14 @@ export const createUpstashRedisStore = ({
 			token: process.env.UPSTASH_REDIS_REST_TOKEN,
 		}) // same as .fromEnv but more explicit so we can see what the values are.
 
-	redisClient
-		.ping()
-		.then(() => logger.log('Connected to Upstash Redis'))
-		.catch((err) => {
-			logger.error('Failed to connect to Upstash Redis:', err)
-		})
+	if (verifyConnection) {
+		redisClient
+			.ping()
+			.then(() => logger.log('Connected to Upstash Redis'))
+			.catch((err) => {
+				logger.error('Failed to connect to Upstash Redis:', err)
+			})
+	}
 
 	return {
 		name: 'upstash-redis',

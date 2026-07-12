@@ -49,11 +49,25 @@ export class StoreWithMetrics implements CacheStore {
 	private store: CacheStore
 	private logger: Logger
 	name: string
+	clear?: CacheStore['clear']
+	entries?: () => Promise<[string, any][]>
 
 	constructor({ store, logger }: { store: CacheStore; logger: Logger }) {
 		this.name = store.name
 		this.store = store
 		this.logger = logger
+
+		// Delegate optional methods only when the wrapped store provides them so
+		// `store.clear?.()` stays an honest no-op when the base store has none.
+		if (store.clear) {
+			this.clear = store.clear.bind(store)
+		}
+
+		const entries = (store as { entries?: () => Promise<[string, any][]> })
+			.entries
+		if (entries) {
+			this.entries = entries.bind(store)
+		}
 	}
 
 	async get(key: string): Promise<any> {

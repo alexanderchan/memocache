@@ -28,7 +28,10 @@ export function createTTLStore({
 		},
 
 		async entries() {
-			if (process.env.NODE_ENV === 'production') {
+			if (
+				typeof process !== 'undefined' &&
+				process.env?.NODE_ENV === 'production'
+			) {
 				throw new Error('For debugging, not allowed in production')
 			}
 

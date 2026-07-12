@@ -456,10 +456,13 @@ describe('cacheQuery', () => {
 				}
 			},
 		})
+		// cacheQuery resolves to T (not T | undefined): assignable without a non-null assertion
+		const narrowed: { data: string } = res
+		void narrowed
 		// type check: res.data exists, res.doesNotExist should not
-		void res?.data
+		void res.data
 		// @ts-expect-error This property should not exist
-		void res?.doesNotExist
+		void res.doesNotExist
 	})
 
 	it('should expose getCacheKey for debugging', async () => {

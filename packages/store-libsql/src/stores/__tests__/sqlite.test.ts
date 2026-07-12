@@ -1,4 +1,6 @@
 import { type CacheStore, hashKey, Time } from '@alexmchan/memocache-common'
+import type { Client } from '@libsql/client'
+import superjson from 'superjson'
 import {
 	afterAll,
 	afterEach,
@@ -173,6 +175,100 @@ describe('SQLite cleanup interval', () => {
 		expect(result).toBeUndefined()
 
 		vi.useRealTimers()
+		await store.dispose?.()
+	})
+})
+
+describe('SQLite store lifecycle', () => {
+	afterEach(() => {
+		vi.restoreAllMocks()
+	})
+
+	it('unrefs the cleanup interval so it does not keep the process alive', () => {
+		const unref = vi.fn()
+		const setIntervalSpy = vi
+			.spyOn(global, 'setInterval')
+			.mockReturnValue({ unref } as unknown as NodeJS.Timeout)
+
+		const store = createSqliteStore()
+
+		expect(setIntervalSpy).toHaveBeenCalled()
+		expect(unref).toHaveBeenCalledTimes(1)
+
+		// clearInterval on the fake handle is a no-op; safe to dispose.
+		store.dispose?.()
+	})
+
+	it('closes a self-created client on dispose', async () => {
+		const store = createSqliteStore()
+		await store.set('key', 'value')
+		expect(await store.get('key')).toBe('value')
+
+		await store.dispose?.()
+
+		// The self-created client was closed, so further operations reject.
+		await expect(store.get('key')).rejects.toThrow()
+	})
+
+	it('does not close an injected client on dispose', async () => {
+		const close = vi.fn()
+		const injectedClient = {
+			execute: vi.fn().mockResolvedValue({ rows: [] }),
+			close,
+		} as unknown as Client
+
+		const store = createSqliteStore({ sqliteClient: injectedClient })
+		await store.dispose?.()
+
+		expect(close).not.toHaveBeenCalled()
+	})
+
+	it('logs instead of crashing when deleting an expired entry rejects', async () => {
+		const error = vi.fn()
+		const logger = {
+			log: vi.fn(),
+			debug: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error,
+		}
+
+		const injectedClient = {
+			execute: vi.fn(async (arg: string | { sql: string }) => {
+				const sql = typeof arg === 'string' ? arg : arg.sql
+				if (sql.startsWith('SELECT')) {
+					return {
+						rows: [
+							{
+								value: superjson.stringify('expired-value'),
+								expires: Date.now() - 1000,
+							},
+						],
+					}
+				}
+				if (sql.startsWith('DELETE')) {
+					throw new Error('delete failed')
+				}
+				return { rows: [] }
+			}),
+			close: vi.fn(),
+		} as unknown as Client
+
+		const store = createSqliteStore({
+			sqliteClient: injectedClient,
+			logger,
+		})
+
+		// The expired read fires a fire-and-forget delete that rejects; get
+		// itself must resolve to undefined without throwing.
+		const result = await store.get('expired-key')
+		expect(result).toBeUndefined()
+
+		// The rejection is handled on a later microtask; wait for the log.
+		await vi.waitFor(() => {
+			expect(error).toHaveBeenCalled()
+		})
+
 		await store.dispose?.()
 	})
 })

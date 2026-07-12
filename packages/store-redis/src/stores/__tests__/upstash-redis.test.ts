@@ -45,6 +45,20 @@ describe('Upstash Redis Store', () => {
 		vi.clearAllMocks()
 	})
 
+	it('should not ping on construction by default', () => {
+		expect(mockClient.ping).not.toHaveBeenCalled()
+	})
+
+	it('should ping on construction when verifyConnection is true', () => {
+		const client = createMockRedisClient()
+		createUpstashRedisStore({
+			redisClient: client as any,
+			defaultTTL: 60 * Time.Second,
+			verifyConnection: true,
+		})
+		expect(client.ping).toHaveBeenCalledTimes(1)
+	})
+
 	it('should set and get a value', async () => {
 		await store.set('key1', 'value1', 10 * Time.Second)
 		const result = await store.get('key1')

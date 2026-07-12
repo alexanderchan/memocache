@@ -153,6 +153,32 @@ describe('Metrics Middleware', () => {
 		expect(mockDispose).toHaveBeenCalledTimes(1)
 	})
 
+	it('should empty the underlying store when clear is called', async () => {
+		const ttlStore = createTTLStore({ defaultTTL: 5 * Time.Minute })
+		const metricsStore = createMetricsStore({ store: ttlStore })
+
+		await metricsStore.set('key', 'value')
+		expect(await metricsStore.get('key')).toBe('value')
+
+		await metricsStore.clear?.()
+
+		expect(await metricsStore.get('key')).toBeUndefined()
+	})
+
+	it('should leave clear undefined when the base store lacks it', () => {
+		// baseStore (the mock) has no clear method
+		expect(storeWithMetrics.clear).toBeUndefined()
+	})
+
+	it('should delegate the entries dev helper when available', async () => {
+		const ttlStore = createTTLStore({ defaultTTL: 5 * Time.Minute })
+		const metricsStore = createMetricsStore({ store: ttlStore })
+
+		await metricsStore.set('key', 'value')
+
+		expect(await metricsStore.entries?.()).toEqual([['key', 'value']])
+	})
+
 	it('should support Symbol.asyncDispose', async () => {
 		const mockDispose = vi.fn().mockResolvedValue(undefined)
 		const storeWithDispose = {

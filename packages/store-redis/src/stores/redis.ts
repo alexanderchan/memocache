@@ -16,6 +16,9 @@ export const createRedisStore = ({
 	defaultTTL?: number
 	logger?: Logger
 } = {}) => {
+	// track whether we created the client ourselves; injected clients are owned
+	// by the caller and must not be quit() on dispose
+	const ownsClient = !redisClientProp
 	const redisClient = redisClientProp || new Redis()
 
 	async function getRedisClient() {
@@ -37,7 +40,9 @@ export const createRedisStore = ({
 	}
 
 	// kick off an async initialization
-	initializeRedis()
+	initializeRedis().catch((err) => {
+		logger.error('Failed to initialize Redis:', err)
+	})
 
 	return {
 		name: 'ioredis',
@@ -55,6 +60,11 @@ export const createRedisStore = ({
 			return client.del(key)
 		},
 		async dispose() {
+			// only close connections we opened ourselves; injected clients are
+			// shared with the caller and must stay alive
+			if (!ownsClient) {
+				return
+			}
 			const client = await getRedisClient()
 			await client.quit()
 		},
