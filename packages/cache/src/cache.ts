@@ -20,6 +20,21 @@ interface CacheQueryOptions {
 	/** Time in milliseconds to consider data fresh and not revalidate.  Fresh data is served and no request to the backend will be made */
 	fresh?: number
 	/**
+	 * Stale-if-error window in milliseconds (RFC 5861). Entries are kept in
+	 * storage for `ttl + staleIfError`; past `ttl` they are served ONLY when
+	 * revalidation fails, so an origin outage degrades to stale data instead of
+	 * errors. Default 0 (off). The window is fixed at write time.
+	 */
+	staleIfError?: number
+	/**
+	 * Negative caching: when `queryFn` resolves to null/undefined, cache that
+	 * result for this many milliseconds and serve it as fresh for the whole
+	 * window (no background revalidation for negatives). Unset (default) means
+	 * nullish values are cached like any other value. Rejections are never
+	 * cached regardless of this option.
+	 */
+	nullTTL?: number
+	/**
 	 * A stable, unique prefix added to the cache key.
 	 *
 	 * Strongly recommended when used via `createCachedFunction`: without it the
@@ -42,12 +57,29 @@ interface CacheOptions {
 	defaultTTL?: number
 	/** Default time in milliseconds to consider data fresh and not revalidate.  Fresh data is served and no request to the backend will be made */
 	defaultFresh?: number
+	/** Default stale-if-error window in milliseconds, see CacheQueryOptions.staleIfError. Default 0 (off) */
+	defaultStaleIfError?: number
+	/** Default negative-caching window in milliseconds, see CacheQueryOptions.nullTTL. Default unset (nulls cached like values) */
+	defaultNullTTL?: number
+	/**
+	 * Backoff for failed revalidations. When a revalidation rejects, further
+	 * attempts for that key are skipped (the stale value keeps being served)
+	 * until an exponential backoff with jitter elapses. Only applies when a
+	 * stale value exists to serve — a cold miss always retries the origin.
+	 * Pass `false` to disable. Default: { initialMs: 1s, maxMs: 30s }.
+	 */
+	revalidateBackoff?: { initialMs?: number; maxMs?: number } | false
 	/** Logger to use for cache errors */
 	logger?: Logger
 }
 
 const DEFAULT_FRESH = 30 * Time.Second // when data is fresh we don't revalidate
 const DEFAULT_TTL = 5 * Time.Minute // how long to keep data in cache
+const DEFAULT_BACKOFF_INITIAL = 1 * Time.Second
+const DEFAULT_BACKOFF_MAX = 30 * Time.Second
+// Backoff state is per-key and in-memory; cap it so a pathological keyspace
+// (e.g. per-user keys against a down origin) can't grow the map unbounded.
+const MAX_BACKOFF_KEYS = 10_000
 
 // Edge/browser-safe check: `process` may be undefined in those runtimes.
 function isDevelopment() {
@@ -61,6 +93,9 @@ export const createCache = ({
 	getStoresAsync,
 	defaultTTL = DEFAULT_TTL,
 	defaultFresh = DEFAULT_FRESH,
+	defaultStaleIfError = 0,
+	defaultNullTTL,
+	revalidateBackoff,
 	logger = defaultLogger,
 	context,
 }: CacheOptions = {}) => {
@@ -73,6 +108,50 @@ export const createCache = ({
 	const _stores: CacheStore[] = []
 	let initPromise: Promise<CacheStore[]> | undefined
 	const revalidating = new Map<string, Promise<any>>()
+
+	const backoffConfig =
+		revalidateBackoff === false
+			? false
+			: {
+					initialMs: revalidateBackoff?.initialMs ?? DEFAULT_BACKOFF_INITIAL,
+					maxMs: revalidateBackoff?.maxMs ?? DEFAULT_BACKOFF_MAX,
+				}
+	// Per-key revalidation failure state (per process): while a key is backing
+	// off, stale reads skip the origin instead of retrying it on every request.
+	const backoffState = new Map<
+		string,
+		{ failures: number; nextAttemptAt: number }
+	>()
+
+	function isBackingOff(key: string) {
+		const state = backoffState.get(key)
+		return !!state && Date.now() < state.nextAttemptAt
+	}
+
+	function recordRevalidateFailure(key: string) {
+		if (!backoffConfig) {
+			return
+		}
+		const failures = (backoffState.get(key)?.failures ?? 0) + 1
+		const base = Math.min(
+			backoffConfig.maxMs,
+			backoffConfig.initialMs * 2 ** (failures - 1),
+		)
+		// equal jitter: [base/2, base) so retries never synchronize but a floor remains
+		const delay = base / 2 + Math.random() * (base / 2)
+		if (!backoffState.has(key) && backoffState.size >= MAX_BACKOFF_KEYS) {
+			// evict the oldest entry (Map preserves insertion order)
+			const oldest = backoffState.keys().next().value
+			if (oldest !== undefined) {
+				backoffState.delete(oldest)
+			}
+		}
+		backoffState.set(key, { failures, nextAttemptAt: Date.now() + delay })
+	}
+
+	function recordRevalidateSuccess(key: string) {
+		backoffState.delete(key)
+	}
 
 	// Track which fresh/ttl combinations we've already warned about so a
 	// misconfiguration warns once per distinct pairing instead of every call.
@@ -95,6 +174,41 @@ export const createCache = ({
 	// Validate the configured defaults up front so the common misconfiguration
 	// surfaces immediately rather than silently disabling SWR at query time.
 	warnIfFreshExceedsTtl(defaultFresh, defaultTTL)
+
+	/**
+	 * Build the stored entry and its storage expiry for a value.
+	 *
+	 * - `staleIfErrorAt` records (at write time) when the entry stops being
+	 *   servable as ordinary stale data and becomes error-only. Entries without
+	 *   the field (older writers, direct store.set) keep legacy behavior: any
+	 *   hit is servable stale.
+	 * - Negative results (nullish + nullTTL configured) live exactly nullTTL
+	 *   and never get a stale-if-error window.
+	 */
+	function buildWriteEntry({
+		value,
+		ttl,
+		staleIfError,
+		nullTTL,
+	}: {
+		value: unknown
+		ttl: number
+		staleIfError: number
+		nullTTL: number | undefined
+	}) {
+		const isNegative = value == null && nullTTL != null
+		const now = Date.now()
+		if (isNegative) {
+			return {
+				entry: { value, age: now, staleIfErrorAt: now + nullTTL },
+				storageTtl: nullTTL,
+			}
+		}
+		return {
+			entry: { value, age: now, staleIfErrorAt: now + ttl },
+			storageTtl: ttl + staleIfError,
+		}
+	}
 
 	async function getStores(): Promise<CacheStore[]> {
 		if (!initPromise) {
@@ -137,6 +251,8 @@ export const createCache = ({
 			...options,
 			ttl: options?.ttl ?? defaultTTL,
 			fresh: options?.fresh ?? defaultFresh,
+			staleIfError: options?.staleIfError ?? defaultStaleIfError,
+			nullTTL: options?.nullTTL ?? defaultNullTTL,
 		}
 
 		// Per-query overrides can also invert the fresh/ttl relationship.
@@ -165,7 +281,14 @@ export const createCache = ({
 				hitStoreIndex = index
 				const age = entry.age ? Date.now() - entry.age : 0
 
-				if (age < localOptions.fresh) {
+				// negative entries are fresh for their whole nullTTL window — no
+				// background revalidation churn for "not found" results
+				const freshWindow =
+					entry.value == null && localOptions.nullTTL != null
+						? localOptions.nullTTL
+						: localOptions.fresh
+
+				if (age < freshWindow) {
 					isFresh = true
 					break
 				}
@@ -174,13 +297,17 @@ export const createCache = ({
 
 		if (isFresh) {
 			if (hitStoreIndex > 0) {
+				const storageWindow =
+					result.value == null && localOptions.nullTTL != null
+						? localOptions.nullTTL
+						: localOptions.ttl + localOptions.staleIfError
 				backfillHigherPriorityStores({
 					stores: _stores.slice(0, hitStoreIndex),
 					key,
 					value: result,
 					ttl: getRemainingTTL({
 						age: result?.age,
-						ttl: localOptions.ttl,
+						ttl: storageWindow,
 					}),
 				})
 			}
@@ -188,20 +315,63 @@ export const createCache = ({
 			return result.value // Data is fresh, return from cache
 		}
 
-		// If stale, return from cache and revalidate in the background
 		if (result) {
-			// register with the context so edge runtimes don't kill the revalidation
-			_context.waitUntil(
-				revalidateInBackground({
-					queryFn,
-					queryKey: key,
-					ttl: localOptions.ttl,
-				}),
-			)
+			// Past the write-time staleIfErrorAt the entry is error-only: it is
+			// still in storage because staleIfError extended the expiry, so it may
+			// no longer be served as ordinary stale data. Revalidate in the
+			// foreground and fall back to the stale value only when the origin fails.
+			const isErrorOnly =
+				result.staleIfErrorAt != null && Date.now() >= result.staleIfErrorAt
+
+			if (isErrorOnly) {
+				if (isBackingOff(key)) {
+					return result.value // origin is known-failing, skip the attempt
+				}
+				try {
+					return await fetchFromOrigin<T>({ queryFn, key, localOptions })
+				} catch {
+					recordRevalidateFailure(key)
+					logger.error(
+						new CacheError({
+							key,
+							message: 'Revalidation failed, serving stale (stale-if-error)',
+						}),
+					)
+					return result.value
+				}
+			}
+
+			// If stale, return from cache and revalidate in the background —
+			// unless the key is backing off after failed revalidations, in which
+			// case keep serving stale without re-hammering the origin.
+			if (!isBackingOff(key)) {
+				// register with the context so edge runtimes don't kill the revalidation
+				_context.waitUntil(
+					revalidateInBackground({
+						queryFn,
+						queryKey: key,
+						localOptions,
+					}),
+				)
+			}
 			return result.value // Return stale data
 		}
 
-		// No data in cache, fetch from the source
+		// No data in cache, fetch from the source. Rejections propagate and are
+		// never cached; the next call retries (backoff only applies when a stale
+		// value exists to serve instead).
+		return fetchFromOrigin<T>({ queryFn, key, localOptions })
+	}
+
+	async function fetchFromOrigin<T>({
+		queryFn,
+		key,
+		localOptions,
+	}: {
+		queryFn: () => Promise<T>
+		key: string
+		localOptions: { ttl: number; staleIfError: number; nullTTL?: number }
+	}): Promise<T> {
 		let p: Promise<T> | undefined
 		try {
 			const existing = revalidating.get(key)
@@ -213,19 +383,21 @@ export const createCache = ({
 			revalidating.set(key, p)
 			const newData = await p
 
+			const _stores = await getStores()
+			const { entry, storageTtl } = buildWriteEntry({
+				value: newData,
+				ttl: localOptions.ttl,
+				staleIfError: localOptions.staleIfError,
+				nullTTL: localOptions.nullTTL,
+			})
 			const writeToStoresPromise = Promise.allSettled(
-				_stores.map((store) =>
-					store.set(
-						key,
-						{ value: newData, age: Date.now() },
-						localOptions?.ttl,
-					),
-				),
+				_stores.map((store) => store.set(key, entry, storageTtl)),
 			)
 
 			// kick off the store updates in the background
 			_context.waitUntil(writeToStoresPromise)
 
+			recordRevalidateSuccess(key)
 			return newData
 		} finally {
 			// only the owner may delete, and only if the entry is still ours —
@@ -276,13 +448,13 @@ export const createCache = ({
 	const revalidateInBackground = async ({
 		queryFn,
 		queryKey,
-		ttl,
+		localOptions,
 	}: {
 		queryFn: () => Promise<any>
 		queryKey: string
-		// Required: callers pass the resolved ttl so this can't silently diverge
-		// from the cache's defaultTTL.
-		ttl: number
+		// Required: callers pass the resolved options so this can't silently
+		// diverge from the cache's defaults.
+		localOptions: { ttl: number; staleIfError: number; nullTTL?: number }
 	}) => {
 		let p: Promise<any> | undefined
 		try {
@@ -295,13 +467,21 @@ export const createCache = ({
 			revalidating.set(queryKey, p)
 			const newData = await p
 
+			recordRevalidateSuccess(queryKey)
+
 			const _stores = await getStores()
+
+			const { entry, storageTtl } = buildWriteEntry({
+				value: newData,
+				ttl: localOptions.ttl,
+				staleIfError: localOptions.staleIfError,
+				nullTTL: localOptions.nullTTL,
+			})
 
 			// update all the stores with the new data
 			const storesUpdatedResultsPromise = Promise.allSettled(
 				_stores.map(
-					async (store) =>
-						await store.set(queryKey, { value: newData, age: Date.now() }, ttl),
+					async (store) => await store.set(queryKey, entry, storageTtl),
 				),
 			)
 
@@ -331,6 +511,7 @@ export const createCache = ({
 			// https://www.unkey.com/docs/libraries/ts/cache/overview
 			return storesUpdatedResults
 		} catch {
+			recordRevalidateFailure(queryKey)
 			logger.error(
 				new CacheError({
 					message: 'Failed to revalidate cache',
@@ -369,10 +550,14 @@ export const createCache = ({
 	}) => {
 		const key = hashKey(queryKey)
 		const stores = await getStores()
+		const { entry, storageTtl } = buildWriteEntry({
+			value,
+			ttl: ttl ?? defaultTTL,
+			staleIfError: defaultStaleIfError,
+			nullTTL: defaultNullTTL,
+		})
 		await Promise.allSettled(
-			stores.map((store) =>
-				store.set(key, { value, age: Date.now() }, ttl ?? defaultTTL),
-			),
+			stores.map((store) => store.set(key, entry, storageTtl)),
 		)
 	}
 

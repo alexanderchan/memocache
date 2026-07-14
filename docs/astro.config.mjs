@@ -39,6 +39,15 @@ export default defineConfig({
           ],
         },
         {
+          label: 'Decisions',
+          items: [
+            {
+              label: 'ADR-0001: Stampede Protection',
+              slug: 'decisions/0001-revalidation-stampede-protection',
+            },
+          ],
+        },
+        {
           label: 'Advanced',
           items: [
             { label: 'Serverless Context', slug: 'advanced/serverless-context' },
