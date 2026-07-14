@@ -1,6 +1,6 @@
 ---
 title: Stores
-description: Choose between in-memory, SQLite, LibSQL, Redis, and Upstash Redis stores.
+description: Choose between in-memory, SQLite, Redis, and Upstash Redis stores.
 ---
 
 # Stores
@@ -21,7 +21,7 @@ const store = createTTLStore({
 
 Use it for low-latency local memory caching. It is process-local and not shared across instances.
 
-## SQLite store (recommended)
+## SQLite store
 
 Backed by Node.js's standard-library [`node:sqlite`](https://nodejs.org/api/sqlite.html) module — **no external dependencies, no native bindings to compile.** Requires **Node.js >= 24** (the module ships in 24 with an experimental warning and is stabilized in 26).
 
@@ -57,49 +57,7 @@ Options:
 - `cleanupInterval`
 - `logger`
 
-For local and file-backed SQLite this is the store to reach for. Use the LibSQL store below only when you need Turso or another remote `libsql://` database.
-
-## LibSQL store (Turso / remote)
-
-Use this when you need Turso or a remote `libsql://` database. For local/in-memory SQLite prefer the dependency-free [SQLite store](#sqlite-store-recommended) above.
-
-Install:
-
-```bash
-pnpm install @alexmchan/memocache-store-libsql
-```
-
-```ts
-import { createCache } from '@alexmchan/memocache'
-import { Time } from '@alexmchan/memocache'
-import { createClient } from '@libsql/client'
-import { createSqliteStore } from '@alexmchan/memocache-store-libsql'
-
-const sqliteClient = createClient({
-  url: 'file:./cache.db',
-})
-
-const sqliteStore = createSqliteStore({
-  sqliteClient,
-  cleanupInterval: 5 * Time.Minute,
-  defaultTTL: 10 * Time.Minute,
-})
-
-const cache = createCache({
-  stores: [sqliteStore],
-  defaultFresh: 1 * Time.Minute,
-})
-```
-
-Options:
-
-- `sqliteClient`
-- `tableName`
-- `defaultTTL`
-- `cleanupInterval`
-- `logger`
-
-The store creates its table lazily and runs periodic cleanup for expired rows.
+For local and file-backed SQLite this is the store to reach for. For a remote SQLite database, put a network store (such as Redis) in front of your remote data instead — memocache no longer ships a Turso/`libsql://` store.
 
 ## Redis store
 
