@@ -34,7 +34,27 @@ Wraps a function in cache lookup and revalidation logic.
 - `ttl`: override entry TTL for this function
 - `fresh`: override freshness window for this function
 
-By default, memocache builds a prefix from `fn.name + fn.toString()`. That is convenient, but it also means code changes can change the cache namespace. Set `cachePrefix` yourself if you want a stable identifier such as `'/api/items'`.
+By default, memocache builds a prefix from `fn.name + fn.toString()`. That is convenient, but it has two hazards — **prefer passing an explicit `cachePrefix`.**
+
+:::caution[Always set `cachePrefix` in production]
+
+1. **Closure collision (wrong-data bug).** Two closures produced by the same factory have identical source but capture different state, so they derive the _same_ prefix and read/write each other's entries:
+
+   ```ts
+   const getForTenant = (tenantId: string) =>
+     cache.createCachedFunction(async (id: string) => fetchItem(tenantId, id))
+   // ⚠️ these two share a cache namespace — tenant B can read tenant A's data
+   const a = getForTenant('tenant-a')
+   const b = getForTenant('tenant-b')
+   ```
+
+   Give each closure its own `cachePrefix` (e.g. include `tenantId`).
+
+2. **Keyspace rotation across deploys.** Bundler minification changes `fn.toString()` per build, so every deploy — and each side of a rolling deploy — uses a fresh keyspace, doubling origin load mid-rollout.
+
+In development, memocache logs a warning when a cached function is created without an explicit `cachePrefix`.
+
+:::
 
 ```ts
 const cachedUser = cache.createCachedFunction(

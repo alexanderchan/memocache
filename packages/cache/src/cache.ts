@@ -19,9 +19,15 @@ interface CacheQueryOptions {
 	ttl?: number
 	/** Time in milliseconds to consider data fresh and not revalidate.  Fresh data is served and no request to the backend will be made */
 	fresh?: number
-	/** A prefix to add to the cache key */
+	/**
+	 * A stable, unique prefix added to the cache key.
+	 *
+	 * Strongly recommended when used via `createCachedFunction`: without it the
+	 * prefix is derived from `fn.toString()`, which collides across closures
+	 * from the same factory (wrong-data bug) and rotates the keyspace under
+	 * bundler minification. See `createCachedFunction` for details.
+	 */
 	cachePrefix?: string
-	/** An array of keys to ignore when hashing the query key */
 }
 interface CacheOptions {
 	/** An array of stores, order read from will be first in the array to last */
@@ -43,6 +49,13 @@ interface CacheOptions {
 const DEFAULT_FRESH = 30 * Time.Second // when data is fresh we don't revalidate
 const DEFAULT_TTL = 5 * Time.Minute // how long to keep data in cache
 
+// Edge/browser-safe check: `process` may be undefined in those runtimes.
+function isDevelopment() {
+	return (
+		typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production'
+	)
+}
+
 export const createCache = ({
 	stores: storesProp,
 	getStoresAsync,
@@ -60,6 +73,28 @@ export const createCache = ({
 	const _stores: CacheStore[] = []
 	let initPromise: Promise<CacheStore[]> | undefined
 	const revalidating = new Map<string, Promise<any>>()
+
+	// Track which fresh/ttl combinations we've already warned about so a
+	// misconfiguration warns once per distinct pairing instead of every call.
+	const warnedFreshTtl = new Set<string>()
+
+	function warnIfFreshExceedsTtl(fresh: number, ttl: number) {
+		if (fresh <= ttl) {
+			return
+		}
+		const signature = `${fresh}:${ttl}`
+		if (warnedFreshTtl.has(signature)) {
+			return
+		}
+		warnedFreshTtl.add(signature)
+		logger.warn(
+			`[memocache] fresh (${fresh}ms) is greater than ttl (${ttl}ms): entries expire before they can be served stale, which disables stale-while-revalidate. Set fresh <= ttl.`,
+		)
+	}
+
+	// Validate the configured defaults up front so the common misconfiguration
+	// surfaces immediately rather than silently disabling SWR at query time.
+	warnIfFreshExceedsTtl(defaultFresh, defaultTTL)
 
 	async function getStores(): Promise<CacheStore[]> {
 		if (!initPromise) {
@@ -103,6 +138,9 @@ export const createCache = ({
 			ttl: options?.ttl ?? defaultTTL,
 			fresh: options?.fresh ?? defaultFresh,
 		}
+
+		// Per-query overrides can also invert the fresh/ttl relationship.
+		warnIfFreshExceedsTtl(localOptions.fresh, localOptions.ttl)
 
 		const _stores = await getStores()
 
@@ -157,7 +195,7 @@ export const createCache = ({
 				revalidateInBackground({
 					queryFn,
 					queryKey: key,
-					ttl: localOptions?.ttl,
+					ttl: localOptions.ttl,
 				}),
 			)
 			return result.value // Return stale data
@@ -238,11 +276,13 @@ export const createCache = ({
 	const revalidateInBackground = async ({
 		queryFn,
 		queryKey,
-		ttl = 5 * Time.Minute,
+		ttl,
 	}: {
 		queryFn: () => Promise<any>
 		queryKey: string
-		ttl?: number
+		// Required: callers pass the resolved ttl so this can't silently diverge
+		// from the cache's defaultTTL.
+		ttl: number
 	}) => {
 		let p: Promise<any> | undefined
 		try {
@@ -336,12 +376,35 @@ export const createCache = ({
 		)
 	}
 
-	//  a memoize function that uses the function.toString() to generate a key
-
+	/**
+	 * Memoize an async function, deriving the cache key prefix from the
+	 * function's name and source (`fn.toString()`) when no explicit
+	 * `cachePrefix` is provided.
+	 *
+	 * IMPORTANT — prefer passing an explicit `options.cachePrefix`. The derived
+	 * prefix has two hazards:
+	 *
+	 * 1. **Closure collision (wrong-data bug):** two closures produced by the
+	 *    same factory share identical source but capture different state, so
+	 *    they derive the *same* prefix and read/write each other's cache
+	 *    entries. Example: `makeGetter(tenantA)` and `makeGetter(tenantB)`
+	 *    collide unless each gets its own `cachePrefix`.
+	 * 2. **Keyspace rotation across deploys:** bundler minification changes
+	 *    `fn.toString()` per build, so every deploy (and each side of a rolling
+	 *    deploy) uses a fresh keyspace — doubling origin load mid-rollout.
+	 *
+	 * Pass a stable, unique `cachePrefix` to avoid both.
+	 */
 	function createCachedFunction<T extends (...args: any[]) => any>(
 		fn: T,
 		options?: CacheQueryOptions,
 	) {
+		if (!options?.cachePrefix && isDevelopment()) {
+			logger.warn(
+				`[memocache] createCachedFunction("${fn.name || 'anonymous'}") has no explicit cachePrefix; the key is derived from fn.toString(). This collides across closures from the same factory and rotates the keyspace when your bundler minifies. Pass options.cachePrefix for stable, unique keys.`,
+			)
+		}
+
 		const cachedFunctionSettings = {
 			cachePrefix: options?.cachePrefix ?? '',
 		}
