@@ -54,5 +54,5 @@ The TTL store caps at `3_000_000` entries by count, not by byte size. It works b
 ## Next
 
 - Read [How It Works](/concepts/how-it-works/) for the read/revalidate lifecycle.
-- Read [Stores](/reference/stores/) if you need Redis or LibSQL.
+- Read [Stores](/reference/stores/) if you need Redis or SQLite.
 - Read [API Reference](/reference/api/) for `cacheQuery`, invalidation, and manual writes.

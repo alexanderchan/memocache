@@ -206,25 +206,21 @@ const store = createTTLStore({
 
 ### SQLite Store `createSqliteStore(options)`
 
-Creates a [libSql](https://www.npmjs.com/package/@libsql/client) SQLite store.
+Creates a SQLite store backed by the standard-library [`node:sqlite`](https://nodejs.org/api/sqlite.html) module (zero external dependencies, Node.js >= 24).
 
-- `options.sqliteClient`: An instance of `@libsql/client`
+- `options.location`: path to open a database (defaults to `':memory:'`)
+- `options.database`: an existing `node:sqlite` `DatabaseSync` (caller-owned)
 - `options.defaultTTL`: Default Time-To-Live for cache entries
 - `options.cleanupInterval`: Interval for cleaning up expired entries
 
 ```typescript
 import { createCache } from '@alexmchan/memocache'
-import { createSqliteStore } from '@alexmchan/memocache/stores/sqlite'
-import { Time } from '@alexmchan/memocache/time'
-import { createClient } from '@libsql/client'
-
-const sqliteClient = createClient({
-  url: 'file::memory:', // or file:./cache.db
-})
+import { createSqliteStore } from '@alexmchan/memocache-store-sqlite'
+import { Time } from '@alexmchan/memocache'
 
 const sqliteStore = createSqliteStore({
-  sqliteClient,
-  cleanupIntervalp: 5 * Time.Minute,
+  location: ':memory:', // or './cache.db'
+  cleanupInterval: 5 * Time.Minute,
   defaultTTL: 10 * Time.Minute,
 })
 

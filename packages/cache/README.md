@@ -245,26 +245,21 @@ const store = createTTLStore({
 })
 ```
 
-### LibSQL Store
+### SQLite Store
 
-For SQLite/LibSQL storage, use the [@alexmchan/memocache-store-libsql](https://github.com/alexmchan/memocache/tree/main/packages/store-libsql) package.
+For SQLite storage, use the [@alexmchan/memocache-store-sqlite](https://github.com/alexmchan/memocache/tree/main/packages/store-sqlite) package — backed by the standard-library `node:sqlite` module with zero external dependencies (Node.js >= 24).
 
 ```bash
-pnpm install @alexmchan/memocache-store-libsql
+pnpm install @alexmchan/memocache-store-sqlite
 ```
 
 ```typescript
 import { createCache } from '@alexmchan/memocache'
 import { Time } from '@alexmchan/memocache-common'
-import { createClient } from '@libsql/client'
-import { createSqliteStore } from '@alexmchan/memocache-store-libsql'
-
-const sqliteClient = createClient({
-  url: 'file::memory:', // or file:./cache.db
-})
+import { createSqliteStore } from '@alexmchan/memocache-store-sqlite'
 
 const sqliteStore = createSqliteStore({
-  sqliteClient,
+  location: ':memory:', // or './cache.db'
   cleanupInterval: 5 * Time.Minute,
   defaultTTL: 10 * Time.Minute,
 })

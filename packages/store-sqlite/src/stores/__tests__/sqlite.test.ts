@@ -14,8 +14,8 @@ import {
 
 import { createSqliteStore } from '../sqlite.js'
 
-// Behavioral parity suite — mirrors the store-libsql local-mode tests so the
-// node:sqlite store is a drop-in replacement.
+// Behavioral suite covering the CacheStore contract (set/get/delete/TTL
+// expiry/clear/cleanup) for the node:sqlite-backed store.
 describe('TTL Cache', () => {
 	let store: CacheStore
 

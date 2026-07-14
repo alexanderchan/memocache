@@ -79,7 +79,7 @@ This package replaces `@alexmchan/memocache-store-libsql`, dropping the `@libsql
    - const store = createSqliteStore({ sqliteClient })
    + const store = createSqliteStore({ location: ':memory:' })
    ```
-3. **Local databases only.** Turso / remote `libsql://` URLs are not supported by `node:sqlite`. If you relied on a remote database, keep using `store-libsql` or point a different tier (e.g. Redis) at your remote store.
+3. **Local databases only.** Turso / remote `libsql://` URLs are not supported by `node:sqlite`. If you relied on a remote database, put a network store (e.g. Redis) in front of it instead — the LibSQL store has been removed.
 
 ## Features
 
