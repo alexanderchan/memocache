@@ -485,6 +485,99 @@ describe('cacheQuery', () => {
 	})
 })
 
+describe('fresh/ttl validation', () => {
+	function makeMockLogger() {
+		return {
+			error: vi.fn(),
+			log: vi.fn(),
+			warn: vi.fn(),
+			debug: vi.fn(),
+			info: vi.fn(),
+		}
+	}
+
+	it('warns at construction when defaultFresh exceeds defaultTTL', () => {
+		const logger = makeMockLogger()
+		createCache({
+			stores: [createTTLStore({ defaultTTL: 5 * Time.Minute })],
+			defaultFresh: 10 * Time.Minute,
+			defaultTTL: 5 * Time.Minute,
+			logger,
+		})
+		expect(logger.warn).toHaveBeenCalledTimes(1)
+		expect(logger.warn.mock.calls[0][0]).toContain('fresh')
+	})
+
+	it('does not warn when fresh <= ttl', () => {
+		const logger = makeMockLogger()
+		createCache({
+			stores: [createTTLStore({ defaultTTL: 5 * Time.Minute })],
+			defaultFresh: 30 * Time.Second,
+			defaultTTL: 5 * Time.Minute,
+			logger,
+		})
+		expect(logger.warn).not.toHaveBeenCalled()
+	})
+
+	it('warns when per-query options invert fresh/ttl, once per distinct pairing', async () => {
+		const logger = makeMockLogger()
+		const cache = createCache({
+			stores: [createTTLStore({ defaultTTL: 5 * Time.Minute })],
+			logger,
+		})
+		const queryFn = vi.fn().mockResolvedValue('data')
+
+		await cache.cacheQuery({
+			queryFn,
+			queryKey: ['a'],
+			options: { fresh: 10 * Time.Minute, ttl: 5 * Time.Minute },
+		})
+		await cache.cacheQuery({
+			queryFn,
+			queryKey: ['b'],
+			options: { fresh: 10 * Time.Minute, ttl: 5 * Time.Minute },
+		})
+
+		// same fresh/ttl pairing → warned only once
+		expect(logger.warn).toHaveBeenCalledTimes(1)
+	})
+})
+
+describe('createCachedFunction cachePrefix warning', () => {
+	function makeMockLogger() {
+		return {
+			error: vi.fn(),
+			log: vi.fn(),
+			warn: vi.fn(),
+			debug: vi.fn(),
+			info: vi.fn(),
+		}
+	}
+
+	it('warns in development when no explicit cachePrefix is given', () => {
+		const logger = makeMockLogger()
+		const cache = createCache({
+			stores: [createTTLStore({ defaultTTL: 5 * Time.Minute })],
+			logger,
+		})
+		cache.createCachedFunction(vi.fn().mockResolvedValue('x'))
+		expect(logger.warn).toHaveBeenCalledTimes(1)
+		expect(logger.warn.mock.calls[0][0]).toContain('cachePrefix')
+	})
+
+	it('does not warn when an explicit cachePrefix is provided', () => {
+		const logger = makeMockLogger()
+		const cache = createCache({
+			stores: [createTTLStore({ defaultTTL: 5 * Time.Minute })],
+			logger,
+		})
+		cache.createCachedFunction(vi.fn().mockResolvedValue('x'), {
+			cachePrefix: 'my-stable-prefix',
+		})
+		expect(logger.warn).not.toHaveBeenCalled()
+	})
+})
+
 describe('revalidateInBackground error handling', () => {
 	it('should log error and not throw when queryFn rejects during revalidation', async () => {
 		const errorLogger = vi.fn()
