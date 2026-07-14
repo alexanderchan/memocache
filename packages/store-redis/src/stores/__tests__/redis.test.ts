@@ -173,6 +173,25 @@ describe('Redis Cache lifecycle', () => {
 		}
 	})
 
+	it('warns when constructed without an explicit client (silent localhost default)', async () => {
+		const logger = createFakeLogger()
+		const quitSpy = vi.spyOn(Redis.prototype, 'quit')
+		try {
+			const store = createRedisStore({ logger })
+			expect(logger.warn).toHaveBeenCalledTimes(1)
+			expect(logger.warn.mock.calls[0][0]).toContain('localhost:6379')
+			await store.dispose?.()
+		} finally {
+			quitSpy.mockRestore()
+		}
+	})
+
+	it('does not warn about the localhost default when a client is injected', () => {
+		const logger = createFakeLogger()
+		createRedisStore({ redisClient: createFakeRedisClient() as any, logger })
+		expect(logger.warn).not.toHaveBeenCalled()
+	})
+
 	it('does not quit an injected client on dispose', async () => {
 		const client = createFakeRedisClient()
 		const store = createRedisStore({ redisClient: client as any })

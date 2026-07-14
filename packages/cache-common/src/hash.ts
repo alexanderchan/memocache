@@ -5,6 +5,16 @@
  */
 export type QueryKey = readonly unknown[]
 
+/**
+ * Builds a stable string key from a query key array. Object keys are sorted so
+ * `{ a, b }` and `{ b, a }` hash the same.
+ *
+ * Known edge case: keys are serialized with `JSON.stringify`, which collapses
+ * `undefined` to `null` in arrays. So `hashKey(['x', undefined])` and
+ * `hashKey(['x', null])` produce the same key and share a cache entry. If you
+ * need to distinguish those, encode the difference explicitly in the key
+ * (e.g. a sentinel string).
+ */
 export function hashKey(queryKey: QueryKey): string {
 	return JSON.stringify(queryKey, (_, val: any) =>
 		isPlainObject(val)

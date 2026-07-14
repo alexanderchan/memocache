@@ -19,6 +19,13 @@ export const createRedisStore = ({
 	// track whether we created the client ourselves; injected clients are owned
 	// by the caller and must not be quit() on dispose
 	const ownsClient = !redisClientProp
+	if (ownsClient) {
+		// ioredis defaults to localhost:6379 — cheap to construct but a silent
+		// misconnection in production. Warn so an unconfigured client is visible.
+		logger.warn(
+			'[memocache] createRedisStore called without a redisClient; defaulting to a new ioredis connection on localhost:6379. Pass an explicit redisClient in production.',
+		)
+	}
 	const redisClient = redisClientProp || new Redis()
 
 	async function getRedisClient() {
