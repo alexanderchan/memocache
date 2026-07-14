@@ -1,6 +1,6 @@
 ---
 title: Stores
-description: Choose between in-memory, LibSQL, Redis, and Upstash Redis stores.
+description: Choose between in-memory, SQLite, LibSQL, Redis, and Upstash Redis stores.
 ---
 
 # Stores
@@ -21,7 +21,47 @@ const store = createTTLStore({
 
 Use it for low-latency local memory caching. It is process-local and not shared across instances.
 
-## LibSQL store
+## SQLite store (recommended)
+
+Backed by Node.js's standard-library [`node:sqlite`](https://nodejs.org/api/sqlite.html) module — **no external dependencies, no native bindings to compile.** Requires **Node.js >= 24** (the module ships in 24 with an experimental warning and is stabilized in 26).
+
+Install:
+
+```bash
+pnpm install @alexmchan/memocache-store-sqlite
+```
+
+```ts
+import { createCache } from '@alexmchan/memocache'
+import { Time } from '@alexmchan/memocache'
+import { createSqliteStore } from '@alexmchan/memocache-store-sqlite'
+
+const sqliteStore = createSqliteStore({
+  location: './cache.db', // or ':memory:' (default)
+  cleanupInterval: 5 * Time.Minute,
+  defaultTTL: 10 * Time.Minute,
+})
+
+const cache = createCache({
+  stores: [sqliteStore],
+  defaultFresh: 1 * Time.Minute,
+})
+```
+
+Options:
+
+- `database` — an existing `node:sqlite` `DatabaseSync` instance (caller-owned; not closed on dispose)
+- `location` — path used to open a database when `database` is omitted; defaults to `':memory:'`
+- `tableName`
+- `defaultTTL`
+- `cleanupInterval`
+- `logger`
+
+For local and file-backed SQLite this is the store to reach for. Use the LibSQL store below only when you need Turso or another remote `libsql://` database.
+
+## LibSQL store (Turso / remote)
+
+Use this when you need Turso or a remote `libsql://` database. For local/in-memory SQLite prefer the dependency-free [SQLite store](#sqlite-store-recommended) above.
 
 Install:
 
