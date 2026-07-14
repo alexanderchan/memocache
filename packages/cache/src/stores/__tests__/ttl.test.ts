@@ -143,6 +143,55 @@ describe('TTL Cache', () => {
 	})
 })
 
+describe('TTL Cache value immutability', () => {
+	it('freezes returned values in development so mutation fails loudly', async () => {
+		const store = createTTLStore({ defaultTTL: 60 * Time.Second })
+		await store.set('key', { nested: { count: 1 } })
+
+		const result = await store.get('key')
+
+		// deep-frozen: mutating a returned value throws instead of silently
+		// corrupting the shared cache entry
+		expect(Object.isFrozen(result)).toBe(true)
+		expect(() => {
+			result.nested.count = 2
+		}).toThrow()
+
+		// the cached value is unchanged
+		expect((await store.get('key')).nested.count).toBe(1)
+	})
+
+	it('does not freeze in production', async () => {
+		const store = createTTLStore({ defaultTTL: 60 * Time.Second })
+		await store.set('key', { count: 1 })
+
+		const original = process.env.NODE_ENV
+		process.env.NODE_ENV = 'production'
+		try {
+			const result = await store.get('key')
+			expect(Object.isFrozen(result)).toBe(false)
+		} finally {
+			process.env.NODE_ENV = original
+		}
+	})
+
+	it('returns a mutable clone when cloneOnGet is enabled', async () => {
+		const store = createTTLStore({
+			defaultTTL: 60 * Time.Second,
+			cloneOnGet: true,
+		})
+		await store.set('key', { nested: { count: 1 } })
+
+		const result = await store.get('key')
+		// a fresh, mutable copy — safe to mutate
+		expect(Object.isFrozen(result)).toBe(false)
+		result.nested.count = 99
+
+		// the cached value is untouched by the caller's mutation
+		expect((await store.get('key')).nested.count).toBe(1)
+	})
+})
+
 describe('createCache with no default params', () => {
 	beforeEach(() => {
 		vi.useFakeTimers()

@@ -21,6 +21,14 @@ const store = createTTLStore({
 
 Use it for low-latency local memory caching. It is process-local and not shared across instances.
 
+**Treat cached values as immutable.** For speed, the memory store returns the *stored reference* rather than a copy (serialized tiers like Redis return fresh copies). Mutating a value you read back would corrupt the shared entry — so in development returned values are deep-frozen and mutation throws loudly. If you need to mutate results, enable cloning:
+
+```ts
+const store = createTTLStore({ defaultTTL: 5 * Time.Minute, cloneOnGet: true })
+```
+
+`cloneOnGet` returns a `structuredClone` of the value on every `get` (a small cost; off by default).
+
 ## SQLite store
 
 Backed by Node.js's standard-library [`node:sqlite`](https://nodejs.org/api/sqlite.html) module — **no external dependencies, no native bindings to compile.** Requires **Node.js >= 24** (the module ships in 24 with an experimental warning and is stabilized in 26).
@@ -82,6 +90,8 @@ const redisStore = createRedisStore({
 ```
 
 This store uses `ioredis`, so it is intended for Node runtimes rather than edge runtimes.
+
+If you omit `redisClient`, the store constructs `new Redis()` (ioredis's default of `localhost:6379`) and logs a warning — pass an explicit client in production to avoid a silent misconnection.
 
 ## Upstash Redis store
 

@@ -97,6 +97,10 @@ function getItems({ storeId, customerId }) {
 }
 ```
 
+:::note[Key edge case: `undefined` vs `null`]
+Query keys are serialized with `JSON.stringify`, which collapses `undefined` to `null` in arrays. So `['user', undefined]` and `['user', null]` hash to the same key and share a cache entry. If you need to distinguish them, encode the difference explicitly (e.g. a sentinel string).
+:::
+
 ## `invalidate({ queryKey })`
 
 Deletes the hashed key from every configured store.
