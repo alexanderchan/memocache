@@ -1,5 +1,58 @@
 # @alexmchan/memocache
 
+## 2.0.0
+
+### Major Changes
+
+- 5a18615: Remove libsql in favor of node:sql
+
+### Minor Changes
+
+- 1e3a54a: Lifecycle, API, and packaging fixes:
+  - `cacheQuery` / `createCachedFunction` return types narrowed to `Promise<T>` / `Promise<Awaited<ReturnType<T>>>` — no more needless null-guards on consumers
+  - Removed dead `Result`/`Ok`/`Err`/`wrap` exports; the error module now re-exports `CacheError`/`BaseError` from the package root
+  - TTL store's dev-only `entries()` guard no longer throws `ReferenceError` in runtimes without `process` (edge/browser)
+  - Metrics middleware now delegates the wrapped store's optional `clear()` and `entries()`
+  - ioredis store: initialization errors on an injected client promise are caught and logged; `dispose()` only quits clients the store created itself (injected clients stay connected)
+  - libsql/sqlite store: cleanup interval is `unref()`'d so scripts exit promptly; `dispose()` closes self-created clients; expired-entry deletes log failures instead of crashing
+  - Upstash store: connection ping on construction is now opt-in via `verifyConnection` (default off — no paid REST call per cold start)
+  - Exports maps use the attw-recommended nested `types` conditions on all packages (attw clean on node10/node16-cjs/node16-esm/bundler); `@alexmchan/msw-testing` now ships real ESM alongside CJS
+
+- c7008cd: Stampede/failure protection (ADR-0001, phases 1–2): revalidation backoff, negative caching, and stale-if-error.
+  - **Revalidation backoff (default on).** When a revalidation rejects, further origin attempts for that key are skipped — the stale value keeps being served — until an exponential backoff with jitter elapses (1s doubling to a 30s cap). A failing origin is now probed at the backoff cadence instead of on every request. Configure or disable via `revalidateBackoff` (pass `false` to opt out). Backoff only applies when a stale value exists to serve: a cold miss always retries, and rejections are never cached.
+  - **Negative caching (`nullTTL` / `defaultNullTTL`, opt-in).** When `queryFn` resolves to `null`/`undefined`, the result is cached for the window and served as fresh for its whole life — no background revalidation churn for "not found".
+  - **Stale-if-error (`staleIfError` / `defaultStaleIfError`, opt-in, RFC 5861).** Entries are kept in storage for `ttl + staleIfError`; past `ttl` they are revalidated in the foreground and served only when the origin fails, so an outage degrades to stale data instead of errors. Entries now carry a write-time `staleIfErrorAt` in their envelope; entries without it (pre-existing data, direct `store.set`) keep the previous behavior, so this is backward compatible with already-cached data.
+
+  Cross-pod coordination (Redis lease / XFetch) was considered and deliberately deferred — see ADR-0001 in the docs for the comparison and the trigger condition to revisit.
+
+### Patch Changes
+
+- f606dca: Guardrails for two easy-to-miss misconfigurations (audit findings):
+  - **`fresh` > `ttl` now warns.** Configuring a freshness window longer than the TTL silently disables stale-while-revalidate (entries expire before they can be served stale). `createCache` validates the defaults up front and each query validates its effective values, warning once per distinct `fresh`/`ttl` pairing.
+  - **`createCachedFunction` warns in development when no explicit `cachePrefix` is given.** The derived-from-`fn.toString()` key collides across closures from the same factory (a wrong-data bug) and rotates the keyspace under bundler minification. The warning, JSDoc, and docs now spell out the hazard and recommend an explicit `cachePrefix`.
+  - Removed a divergent hardcoded 5-minute TTL default inside `revalidateInBackground` — the resolved TTL is now always passed in, so it can't drift from the cache's `defaultTTL`.
+
+- e7dc3cb: SWR correctness and packaging fixes:
+  - `cacheQuery` no longer loses a stale hit from a higher-priority store when a lower-priority store misses — the stale value is served and revalidated in the background instead of blocking on the origin
+  - A store whose `get()` rejects (e.g. Redis down) is skipped with a logged error instead of failing the whole read (matches upstream unkey fix #3303)
+  - Background revalidation is now registered with `context.waitUntil` so edge runtimes don't kill it after the response
+  - Request-dedup map uses guarded deletes so an awaiting reader can no longer evict a newer in-flight promise
+  - Encryption middleware: the shared encrypt memoizer now compares the CryptoKey, so two stores with different keys no longer share ciphertext; undecryptable entries (key rotation, corruption) degrade to a cache miss instead of throwing
+  - `DefaultStatefulContext` drops settled promises instead of retaining them forever in long-running processes
+  - Upstash store now round-trips values through superjson for parity with the other stores (Dates/Maps survive); entries written by older versions are treated as cache misses
+  - Packaging: `files: ["dist"]` on all published packages, removed unused `@libsql/client` dependency from `@alexmchan/memocache` and unused `@upstash/redis` from the libsql store, workspace root marked private
+
+- e94b1bd: Two audit-review follow-ups:
+  - **Memory store value immutability (`@alexmchan/memocache`).** The in-memory TTL store returned the stored object by reference while serialized tiers (Redis) return copies, so mutating a value read back silently corrupted the shared entry — and the behavior differed by which tier hit. Returned values are now deep-frozen in development (mutation throws loudly instead of corrupting the cache), and a new `cloneOnGet` option returns a `structuredClone` for callers that need mutable results. Production behavior/perf is unchanged by default; the immutability contract is now documented.
+  - **`createRedisStore` localhost warning (`@alexmchan/memocache-store-redis`).** Constructing the store without a `redisClient` still defaults to ioredis's `localhost:6379`, but now logs a warning so a silent misconnection in production is visible.
+  - **`hashKey` `undefined`/`null` edge documented (`@alexmchan/memocache-common`).** `JSON.stringify` collapses `undefined` to `null`, so `['x', undefined]` and `['x', null]` share a key — now called out in JSDoc and the reference docs.
+
+- Updated dependencies [5a18615]
+- Updated dependencies [1e3a54a]
+- Updated dependencies [e7dc3cb]
+- Updated dependencies [e94b1bd]
+  - @alexmchan/memocache-common@2.0.0
+
 ## 1.0.0
 
 ### Major Changes
